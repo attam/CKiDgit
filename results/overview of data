@@ -1,0 +1,393 @@
+Patient demographics overview
+
+Gender (male = 1, female=0)
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(male1fe0) %>% table()
+Adding missing grouping variables: `VISIT`
+     male1fe0
+VISIT   0   1
+  10  342 562
+  20  299 483
+  30  247 410
+  40  192 298
+  50  157 233
+  60  137 205
+  70  113 165
+  80   75 107
+  90   28  37
+  100   4   6
+  110   0   1
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(CKD_stage) %>% table() %>% addmargins()
+Adding missing grouping variables: `VISIT`
+     CKD_stage
+VISIT    5    4    3    2    1  Sum
+  10     0   77  476  260   38  851
+  20     4   91  365  210   41  711
+  30     3   51  231  145   17  447
+  40     5   85  233  100   11  434
+  50     2   70  186   56    7  321
+  60     3   69  159   51    4  286
+  70     1   50  129   32    1  213
+  80     2   45   65   21    0  133
+  90     0   12   27    8    0   47
+  100    0    1    1    1    0    3
+  110    0    0    0    0    0    0
+  Sum   20  551 1872  884  119 3446
+
+Clinic BPs by visit (filter: must have valid SBP and DBP)
+> test.2 %>% group_by(VISIT) %>% filter(!is.na(DB_DATE), !is.na(SBP), !is.na(DBP)) %>% tally()
+# A tibble: 11 x 2
+   VISIT     n
+   <int> <int>
+ 1    10   880
+ 2    15   798
+ 3    20   734
+ 4    30   591
+ 5    40   438
+ 6    50   331
+ 7    60   282
+ 8    70   224
+ 9    80   139
+10    90    45
+11   100     3
+
+ABPMs by visit (filter: must have successful ABPM study)
+> test.2 %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1) %>% tally()
+# A tibble: 6 x 2
+  VISIT     n
+  <int> <int>
+1    20   502
+2    40   263
+3    50     1
+4    60   168
+5    80    78
+6   100     2
+
+Echocardiograms by visit (excluded CAUTION flag)
+# test %>% group_by(VISIT) %>% filter(CAUTION==0) %>% tally()
+
+  VISIT     n
+  <int> <int>
+1    20   626
+2    40   355
+3    60   226
+4    80   112
+5    90     1
+6   100     1
+
+Overview of time differences between clinic BP, ABPM and echocardiogram:
+
+Overview of BP status (combined ABPM + clinic BP) by visit:
+> cardio %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus !=-1) %>% select(BPstatus) %>% table() %>% addmargins
+Adding missing grouping variables: `VISIT`
+     BPstatus
+VISIT   0   1   2   3 Sum
+  20  178  11 217  71 477
+  40  108   3 122  20 253
+  50    1   0   0   0   1
+  60   59   2  82  18 161
+  80   26   1  38  10  75
+  100   1   0   1   0   2
+  Sum 373  17 460 119 969
+
+Summary of BP status:
+0 = normotensive
+1 = white-coat hypertension
+2 = masked hypertension
+3 = ambulatory/confirmed hypertension
+
+number of antihypertensive agents taken by patient
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(n_agents) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+
+Note: <NA> = not taking any antihypertensives
+
+     n_agents
+VISIT    1    2    3    4    5 <NA>  Sum
+  10   412  133   25   21    3  310  904
+  20   359  103   19   11    1  289  782
+  30   281   96   21    6    1  252  657
+  40   208   69   17    5    1  190  490
+  50   159   53    9    2    1  166  390
+  60   125   44    5    1    2  165  342
+  70   112   28    4    2    0  132  278
+  80    68   20    2    0    1   91  182
+  90    23    7    2    1    0   32   65
+  100    1    0    0    0    0    9   10
+  110    0    0    0    0    0    1    1
+  Sum 1748  553  104   49   10 1637 4101
+
+------
+Socioeconomic factors:
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(INCOME) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+
+Legend for
+INCOME                        Household Income               1= le $6000/yr, le $500/mo,
+                                                                                     le $115/wk
+                                                                                  2= $6001-$12000/yr, $501-
+                                                                                     $1000/mo, $116-$231/wk
+                                                                                  3= $12001-$18000/yr, $1001-
+                                                                                     $1500/mo, $232-$346/wk
+                                                                                  4= $18001-$24000/yr, $1501-
+                                                                                     $2000/mo, $347-$461/wk
+                                                                                  5= $24001-$30000/yr, $2001-
+                                                                                     $2500/mo, $462-$577/wk
+                                                                                  6= $30001-$36000/yr, $2501-
+                                                                                     $3000/mo, $578-$692/wk
+                                                                                  7= $36001-$75000/yr, $3001-
+                                                                                     $6250/mo, $693-$1442/wk
+                                                                                  8= gt $75000/yr, gt $6250/mo,
+                                                                                     gt $1442/wk
+                                                                                  -1= N/A (Not Asked)
+                                                                                  -9= Missing
+     INCOME
+VISIT   -9   -1    1    2    3    4    5    6    7    8 <NA>  Sum
+  10    21    0   51   47   70   70   64   58  254  269    0  904
+  20    43    0   28   33   58   49   43   57  214  234   23  782
+  30    13  382   11    7   20   14   16   15   64   80   35  657
+  40    28    0   22   14   26   38   23   23  133  145   38  490
+  50    16   33   23   18   21   14   15   20   94   89   47  390
+  60    18    0   12   21   22   13   14   21   73   97   51  342
+  70    11    0   14   12    8   15   14   14   63   74   53  278
+  80     5    0    4    5    7   11   16    4   40   47   43  182
+  90     6    0    1    3    3    3    3    4    9   16   17   65
+  100    0    0    0    0    0    0    0    0    0    3    7   10
+  110    0    0    0    0    0    0    0    0    0    0    1    1
+  Sum  161  415  166  160  235  227  208  216  944 1054  315 4101
+
+
+Maternal education:
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(MATEDU) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+
+MATEDU                        Maternal Education             1= High School or less
+                                                                                  2= Some College
+                                                                                  3= College graduate
+                                                                                  -1= N/A (Not asked)
+                                                                                  -9= Missing
+     MATEDU
+VISIT   -9   -1    1    2    3 <NA>  Sum
+  10    21    0  354  245  284    0  904
+  20    28    0  296  193  242   23  782
+  30     0  619    2    1    0   35  657
+  40    19    0  170  125  138   38  490
+  50     0  342    1    0    0   47  390
+  60    16    0  104   80   91   51  342
+  70     0  225    0    0    0   53  278
+  80    11    0   51   30   47   43  182
+  90     0   48    0    0    0   17   65
+  100    0    0    0    1    2    7   10
+  110    0    0    0    0    0    1    1
+  Sum   95 1234  978  675  804  315 4101
+
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(RACE) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+
+
+RACE                          Child's race                   1= Caucasian
+                                                                                  2= African-American
+                                                                                  3= American Indian
+                                                                                  4= Native Hawaiian
+                                                                                  5= Asian
+                                                                                  6= Other
+                                                                                  7= more than one race
+                                                                                     (excluding AA race)
+                                                                                  8= more than one race
+                                                                                     (including AA race)
+                                                                                  -9= Missing
+
+     RACE
+VISIT    1    2    3    4    5    6    7    8 <NA>  Sum
+  10   590  165   15    4   22   38   34   36    0  904
+  20   506  127   10    2   14   31   34   35   23  782
+  30   421  101    9    0   11   22   27   31   35  657
+  40   311   71    7    0    7   14   22   20   38  490
+  50   231   56    4    0    6   11   19   16   47  390
+  60   201   43    3    0    5    6   19   14   51  342
+  70   166   22    2    0    3    6   15   11   53  278
+  80   107   11    0    0    1    3   10    7   43  182
+  90    35    7    0    0    0    1    1    4   17   65
+  100    3    0    0    0    0    0    0    0    7   10
+  110    0    0    0    0    0    0    0    0    1    1
+  Sum 2571  603   50    6   69  132  181  174  315 4101
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(HISP) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+     HISP
+VISIT   -9    0    1 <NA>  Sum
+  10    13  762  129    0  904
+  20     9  642  108   23  782
+  30     6  531   85   35  657
+  40     6  388   58   38  490
+  50     4  288   51   47  390
+  60     4  244   43   51  342
+  70     3  189   33   53  278
+  80     2  114   23   43  182
+  90     0   39    9   17   65
+  100    0    3    0    7   10
+  110    0    0    0    1    1
+  Sum   47 3200  539  315 4101
+
+
+----------
+
+Medical factors:
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(LBW) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+
+   10    3 3.0       LBW                           low birth weight (BW<2500 g)   1= yes
+                                                                                  0= no
+                                                                                  .= missing
+
+   13    3 3.0       premature                     premature birth (GA<36 weeks)  1= yes
+                                                                                  0= no
+                                                                                  blank= missing
+     LBW
+VISIT    0    1 <NA>  Sum
+  10   693  157   54  904
+  20   586  132   64  782
+  30   476  114   67  657
+  40   350   81   59  490
+  50   261   66   63  390
+  60   219   59   64  342
+  70   172   43   63  278
+  80   110   25   47  182
+  90    39    7   19   65
+  100    3    0    7   10
+  110    0    0    1    1
+  Sum 2909  684  508 4101
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(PREMATURE) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+     PREMATURE
+VISIT    0    1 <NA>  Sum
+  10   769  101   34  904
+  20   645   88   49  782
+  30   535   70   52  657
+  40   388   53   49  490
+  50   292   42   56  390
+  60   250   36   56  342
+  70   195   27   56  278
+  80   125   13   44  182
+  90    43    4   18   65
+  100    3    0    7   10
+  110    0    0    1    1
+  Sum 3245  434  422 4101
+
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(GHBFAMHB) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+
+  551    2 2.0       GHBFAMHB         E.8.a.1      Child's biological family      1= Yes
+                                                   members - high blood pressure  2= No
+                                                   in the past year               -1= N.A. (Skipped)
+                                                                                  -7= Refusal
+                                                                                  -8= Don't know
+                                                                                  -9 or Blank= Missing
+     GHBFAMHB
+VISIT   -9   -8   -1    1    2 <NA>  Sum
+  10     0    0    0    1    0  903  904
+  20     9   28   47  307  368   23  782
+  30     0    0    4    1    1  651  657
+  40     5   21   24  176  225   39  490
+  50     0    0    9    0    0  381  390
+  60     2   18   14  103  154   51  342
+  70     0    0    0    0    0  278  278
+  80     0    6    9   52   72   43  182
+  90     0    0    0    0    0   65   65
+  100    0    0    0    1    2    7   10
+  110    0    0    0    0    0    1    1
+  Sum   16   73  107  641  822 2442 4101
+
+
+Effect of steroids:
+
+6    2 2.0       NSSTPYBP         C.3.a.5      Past year steroid side effect  1= YES
+                                                   - increased blood pressure     2= NO
+                                                                                  -1= N.A. (Skipped)
+                                                                                  -7= Refusal
+                                                                                  -8= Don't know
+                                                                                  -9 or Blank= Missing
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(NSSTPYBP) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+     NSSTPYBP
+VISIT   -9   -8   -1    1    2 <NA>  Sum
+  10     0    3   38    7   13  843  904
+  20     2    2  102    6    7  663  782
+  30     4    1  142    4    4  502  657
+  40     0    0   43    1    2  444  490
+  50     0    0    8    1    0  381  390
+  60     0    0   29    0    0  313  342
+  70     2    0   81    1    1  193  278
+  80     1    0   97    0    3   81  182
+  90     0    0   47    0    1   17   65
+  100    0    0    3    0    0    7   10
+  110    0    0    0    0    0    1    1
+  Sum    9    6  590   20   31 3445 4101
+
+
+   94    2 2.0       NSSTSEBP         C.8.a.5      Steroid side effect -          1= YES
+                                                   increased blood pressure       2= NO
+                                                                                  -1= N.A. (Skipped)
+                                                                                  -7= Refusal
+                                                                                  -8= Don't know
+                                                                                  -9 or Blank= Missing
+
+> test %>% filter(VISIT %% 10==0) %>% group_by(VISIT) %>% select(NSSTSEBP) %>% table(useNA="ifany") %>% addmargins()
+Adding missing grouping variables: `VISIT`
+     NSSTSEBP
+VISIT   -9   -8   -1    1    2 <NA>  Sum
+  10     1    7  198   39   62  597  904
+  20   130   12  550   25   42   23  782
+  30    14   16  549   25   18   35  657
+  40     4    5  394   16   33   38  490
+  50     4   10  290   14   25   47  390
+  60     3    5  256    9   18   51  342
+  70     3    3  202    5   12   53  278
+  80     1    0  131    1    6   43  182
+  90     0    0   47    0    1   17   65
+  100    0    0    3    0    0    7   10
+  110    0    0    0    0    0    1    1
+  Sum  160   58 2620  134  217  912 4101
+
+-----------------
+Timing of the ABPM, echo and clinic BP
+Data from visit 20
+Number of outliers > 30 days
+Echo vs PE (clinic BP):
+
+> test %>% filter(VISIT==20) %>% select(d_echo_pe) %>% abs() %>% summary()
+   d_echo_pe      
+ Min.   :  0.000  
+ 1st Qu.:  0.365  
+ Median :  0.730  
+ Mean   :  9.043  
+ 3rd Qu.:  1.095  
+ Max.   :791.320  
+ NA's   :106   
+
+Echo vs ABPM:
+> test %>% filter(VISIT==20) %>% select(d_echo_abpm) %>% abs() %>% summary()
+  d_echo_abpm     
+ Min.   :  0.000  
+ 1st Qu.:  0.365  
+ Median :  1.095  
+ Mean   : 25.631  
+ 3rd Qu.:  8.395  
+ Max.   :791.320  
+ NA's   :233  
+
+> test %>% filter(VISIT==20) %>% select(d_abpm_pe) %>% abs() %>% summary()
+   d_abpm_pe      
+ Min.   :  0.000  
+ 1st Qu.:  0.365  
+ Median :  0.730  
+ Mean   :  9.043  
+ 3rd Qu.:  1.095  
+ Max.   :791.320  
+ NA's   :106  

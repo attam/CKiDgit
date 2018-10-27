@@ -1,0 +1,69 @@
+> fit_SBP<-lm(SBPZAGH ~ ENALAPRIL_mg_kg + LISINOPRIL_mg_kg + LOSARTAN_mg_kg + AMLODIPINE_mg_kg + LABETALOL_mg_kg + FUROSEMIDE_mg_kg + HYDROCHLOROTHIAZIDE_mg_kg + male1fe0 + n_agents + INCOME + CKDONST + BMIPCTAG, data=v20data.2)
+> summary(fit_SBP)
+
+Call:
+lm(formula = SBPZAGH ~ ENALAPRIL_mg_kg + LISINOPRIL_mg_kg + LOSARTAN_mg_kg + 
+    AMLODIPINE_mg_kg + LABETALOL_mg_kg + FUROSEMIDE_mg_kg + HYDROCHLOROTHIAZIDE_mg_kg + 
+    male1fe0 + n_agents + INCOME + CKDONST + BMIPCTAG, data = v20data.2)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.6948 -0.7126 -0.0437  0.6268  3.9040 
+
+Coefficients:
+                           Estimate Std. Error t value Pr(>|t|)    
+(Intercept)               -0.291157   0.215329  -1.352  0.17701    
+ENALAPRIL_mg_kg           -0.090360   0.175671  -0.514  0.60725    
+LISINOPRIL_mg_kg          -0.088616   0.296344  -0.299  0.76505    
+LOSARTAN_mg_kg             0.064679   0.130111   0.497  0.61936    
+AMLODIPINE_mg_kg           2.694894   0.596911   4.515 8.11e-06 ***
+LABETALOL_mg_kg            0.010259   0.027396   0.374  0.70822    
+FUROSEMIDE_mg_kg           1.069120   0.330053   3.239  0.00129 ** 
+HYDROCHLOROTHIAZIDE_mg_kg -0.167871   0.315795  -0.532  0.59528    
+male1fe0                   0.008424   0.106039   0.079  0.93672    
+n_agents                   0.197967   0.094280   2.100  0.03631 *  
+INCOME                    -0.016654   0.014126  -1.179  0.23905    
+CKDONST                    0.004246   0.010832   0.392  0.69528    
+BMIPCTAG                   0.004784   0.001727   2.770  0.00584 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 1.105 on 449 degrees of freedom
+  (281 observations deleted due to missingness)
+Multiple R-squared:  0.1328,	Adjusted R-squared:  0.1096 
+F-statistic:  5.73 on 12 and 449 DF,  p-value: 3.121e-09
+
+> fit_DBP<-lm(DBPZAGH ~ ENALAPRIL_mg_kg + LISINOPRIL_mg_kg + LOSARTAN_mg_kg + AMLODIPINE_mg_kg + LABETALOL_mg_kg + FUROSEMIDE_mg_kg + HYDROCHLOROTHIAZIDE_mg_kg + male1fe0 + n_agents + INCOME + CKDONST + BMIPCTAG, data=v20data.2)
+> summary(fit_DBP)
+
+Call:
+lm(formula = DBPZAGH ~ ENALAPRIL_mg_kg + LISINOPRIL_mg_kg + LOSARTAN_mg_kg + 
+    AMLODIPINE_mg_kg + LABETALOL_mg_kg + FUROSEMIDE_mg_kg + HYDROCHLOROTHIAZIDE_mg_kg + 
+    male1fe0 + n_agents + INCOME + CKDONST + BMIPCTAG, data = v20data.2)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-2.8992 -0.6479 -0.0586  0.7459  3.6964 
+
+Coefficients:
+                            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                0.3270600  0.1933093   1.692 0.091359 .  
+ENALAPRIL_mg_kg           -0.2885117  0.1577070  -1.829 0.068000 .  
+LISINOPRIL_mg_kg          -0.1821579  0.2660396  -0.685 0.493885    
+LOSARTAN_mg_kg             0.2150942  0.1168061   1.841 0.066213 .  
+AMLODIPINE_mg_kg           2.6843513  0.5358706   5.009 7.87e-07 ***
+LABETALOL_mg_kg            0.0132614  0.0245942   0.539 0.590011    
+FUROSEMIDE_mg_kg           1.0714413  0.2963015   3.616 0.000333 ***
+HYDROCHLOROTHIAZIDE_mg_kg -0.4676110  0.2835019  -1.649 0.099763 .  
+male1fe0                   0.0817330  0.0951958   0.859 0.391032    
+n_agents                  -0.0390839  0.0846386  -0.462 0.644467    
+INCOME                    -0.0246089  0.0126815  -1.941 0.052940 .  
+CKDONST                    0.0005054  0.0097246   0.052 0.958575    
+BMIPCTAG                   0.0008829  0.0015503   0.570 0.569295    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9917 on 449 degrees of freedom
+  (281 observations deleted due to missingness)
+Multiple R-squared:  0.1073,	Adjusted R-squared:  0.08343 
+F-statistic: 4.497 on 12 and 449 DF,  p-value: 7.551e-07
