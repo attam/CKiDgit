@@ -164,3 +164,20 @@ test$DBPZAGH2017<-mapply(bpp,test$DBP,test$age, test$AVHEIGHT,test$male1fe0,2,2)
 # data overview found in file "overview of data"
 # this is a test to see how changes as handled in git
 
+# relationship between BP status and number of antihypertensive agents:
+# reference: tutorial of chi square analysis in r: http://www.sthda.com/english/wiki/chi-square-test-of-independence-in-r
+n_agents_20<-test %>% filter(VISIT==20) %>% mutate(n_agents=replace_na(n_agents,0))
+# show the table
+# excludes patients whose BP status unknown (either clinic BP or ABPM study results are missing)
+table(n_agents_20$n_agents,n_agents_20$BPstatus, exclude = c(-1,NA))
+# balloonplot
+library("gplots", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
+balloonplot(t(dt), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
+
+# chi-squared test shows highly significant p-value of 8.4E-5
+# suggesting n_agents and BP status are not randomly/evenly distributed
+chisq <- chisq.test(dt)
+chisq
+library(corrplot,ggplot2)
+corrplot(chisq$residuals, is.cor = FALSE)
+
