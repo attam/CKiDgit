@@ -11,8 +11,9 @@ library(tidyr)
 #library("reshape2", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
 #library("histogram", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
 
-#setwd("~/Documents/Research/CKiDgit")
-setwd("C:/Users/Orit/Downloads/CKiD/CKiDgit")
+wd<-if_else(Sys.info()["nodename"]=='matta', "~/Documents/Research/CKiDgit", "C:/Users/Orit/Downloads/CKiD/CKiDgit")
+setwd(wd)
+#setwd("C:/Users/Orit/Downloads/CKiD/CKiDgit")
 
 # importing data
 medsum_full <- read.csv("data/medsum_full.csv")
