@@ -181,7 +181,7 @@ n_agents_20<-test %>% filter(VISIT==20) %>% mutate(n_agents=replace_na(n_agents,
 # excludes patients whose BP status unknown (either clinic BP or ABPM study results are missing)
 table(n_agents_20$n_agents,n_agents_20$BPstatus, exclude = c(-1,NA))
 # balloonplot
-library("gplots", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
+dt <- table(n_agents_20$n_agents,n_agents_20$BPstatus, exclude = c(-1,NA))
 balloonplot(t(dt), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
 
 # chi-squared test shows highly significant p-value of 8.4E-5
