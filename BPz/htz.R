@@ -9,7 +9,7 @@
 # will return invalid result if age < 0, and will use height z-score for 18-years when age > 18y
 
 #setwd("~/Documents/Research/CKiDr_local/BPz")
-load("~/Documents/Research/CKiDr_local/BPz/htz.RData")
+load("BPz/htz.RData")
 # gender = 1 for male, 0 for female
 
 htz <- function(ht,age,mf) {

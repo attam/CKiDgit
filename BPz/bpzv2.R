@@ -19,9 +19,9 @@
 # outside of the range 1-99 will be assigned z-scores of -/+ 2.33
 
 library("dplyr", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
-source('~/Documents/Research/CKiDr_local/BPz/htz.R')
-#setwd("~/Documents/Research/CKiDr_local/BPz")
-load("~/Documents/Research/CKiDr_local/BPz/BPcoefs.RData")
+source('BPz/htz.R')
+#setwd("")
+load("BPz/BPcoefs.RData")
 # gender = 1 for male, 0 for female
 # sysdia = 1 for systolic, 2 for diastolic
 

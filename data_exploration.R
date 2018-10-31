@@ -1,30 +1,37 @@
 #loading libraries
 library(readr)
-library("dplyr", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
-library("reshape2", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
-library("histogram", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
+library(corrplot)
+library(dplyr)
+library(reshape2)
+library(histogram)
+library(gplots)
+library(tidyr)
+#library("dplyr", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
+#library("reshape2", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
+#library("histogram", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
 
-setwd("~/Documents/Research/CKiDgit")
+#setwd("~/Documents/Research/CKiDgit")
+setwd("C:/Users/Orit/Downloads/CKiD/CKiDgit")
 
 # importing data
 medsum_full <- read.csv("data/medsum_full.csv")
 cardio<-read.csv("data/cardio.csv")
 echo<-read.csv("data/echo.csv")
-f13 <- read.csv("~/Documents/Research/CKiDr_local/data/f13.csv")
-f14 <- read.csv("~/Documents/Research/CKiDr_local/data/f14.csv")
-f15 <- read.csv("~/Documents/Research/CKiDr_local/data/f15.csv")
-socdem <- read.csv("~/Documents/Research/CKiDr_local/data/socdem.csv")
-growth <- read.csv("~/Documents/Research/CKiDr_local/data/growth.csv")
-pe <- read.csv("~/Documents/Research/CKiDr_local/data/pe.csv")
-gfrcalibratedsummary <- read.csv("~/Documents/Research/CKiDr_local/data/gfrcalibratedsummary.csv")
-advr <- read.csv("~/Documents/Research/CKiDr_local/data/advr.csv")
-kidhist <- read.csv("~/Documents/Research/CKiDr_local/data/kidhist.csv")
-l05 <- read.csv("~/Documents/Research/CKiDr_local/data/l05.csv")
-l02 <- read.csv("~/Documents/Research/CKiDr_local/data/l02.csv")
-l51 <- read.csv("~/Documents/Research/CKiDr_local/data/l51.csv")
-l31 <- read.csv("~/Documents/Research/CKiDr_local/data/l31.csv")
+f13 <- read.csv("data/f13.csv")
+f14 <- read.csv("data/f14.csv")
+f15 <- read.csv("data/f15.csv")
+socdem <- read.csv("data/socdem.csv")
+growth <- read.csv("data/growth.csv")
+pe <- read.csv("data/pe.csv")
+gfrcalibratedsummary <- read.csv("data/gfrcalibratedsummary.csv")
+advr <- read.csv("data/advr.csv")
+kidhist <- read.csv("data/kidhist.csv")
+l05 <- read.csv("data/l05.csv")
+l02 <- read.csv("data/l02.csv")
+l51 <- read.csv("data/l51.csv")
+l31 <- read.csv("data/l31.csv")
 gfr<-gfrcalibratedsummary
-gh <- read.csv("~/Documents/Research/CKiDr_local/data/gh.csv")
+gh <- read.csv("data/gh.csv")
 
 # data integrity issues:
 # review of the raw data showed several instances where the historical data is not consistent
@@ -47,7 +54,7 @@ load("BP_medlist.RData")
 # note: BP_medlist will display the misspelled/brand names of BP meds, frequency at visit 10?, and corrected names
 medsum_full$med.corrected<-BP_medlist$Corrected.Name[match(medsum_full$MSMEDICA,BP_medlist$Var1)]
 # categorize the BP meds into groups based on BP_medgroups.csv
-BP_medgroups <- read.csv("~/Documents/Research/CKiDr_local/BP_medgroups.csv")
+BP_medgroups <- read.csv("BP_medgroups.csv")
 medsum_full$BPmedgroup<-BP_medgroups$bp_group[match(medsum_full$med.corrected,BP_medgroups$x)]
 # add a column containing the number of distinct antihypertensive agents (n_agents) taken by a patient at that visit
 medsum_full<-medsum_full %>% filter(!is.na(BPmedgroup)) %>% group_by(CASEID,VISIT) %>% mutate(n_agents=n_distinct(med.corrected))
@@ -180,4 +187,5 @@ chisq <- chisq.test(dt)
 chisq
 library(corrplot,ggplot2)
 corrplot(chisq$residuals, is.cor = FALSE)
+
 
