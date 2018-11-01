@@ -141,6 +141,8 @@ medsum_full.4<-dcast(medsum_full.4,CASEID+VISIT+MSVISDAT+n_agents~med.corrected,
 
 test<-full_join(medsum_full.4,test)
 
+# replace all missing n_agents values to 0 (patients not taking any antihypertensives)
+test$n_agents[is.na(test$n_agents)]<-0
 
 #add LVMI/BSA variable
 #test<- test %>% mutate(LVMI_BSA=LVMI/BSA)
@@ -176,10 +178,10 @@ test$DBPZAGH2017<-mapply(bpp,test$DBP,test$age, test$AVHEIGHT,test$male1fe0,2,2)
 
 # relationship between BP status and number of antihypertensive agents:
 # reference: tutorial of chi square analysis in r: http://www.sthda.com/english/wiki/chi-square-test-of-independence-in-r
-n_agents_20<-test %>% filter(VISIT==20) %>% mutate(n_agents=replace_na(n_agents,0))
+n_agents_20<-test %>% filter(VISIT==20)
 # show the table
 # excludes patients whose BP status unknown (either clinic BP or ABPM study results are missing)
-table(n_agents_20$n_agents,n_agents_20$BPstatus, exclude = c(-1,NA))
+table(n_agents_20$n_agents,n_agents_20$BPstatus, exclude = c(-1,NA)) %>% addmargins()
 # balloonplot
 dt <- table(n_agents_20$n_agents,n_agents_20$BPstatus, exclude = c(-1,NA))
 balloonplot(t(dt), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
@@ -191,4 +193,11 @@ chisq
 library(corrplot,ggplot2)
 corrplot(chisq$residuals, is.cor = FALSE)
 
+# writing table files
+# visit20_n_agents_BPstatus.csv: n_agents (rows) by BP status (columns) in VISIT 20 only
+# note: includes those with unknown BP status (-1), due to unknown clinic BP percentile, or unsuccessfull ABPM study
+write.table(test %>% filter(VISIT==20) %>% select(n_agents,BPstatus) %>% table() %>% addmargins(),row.names=T, col.names=NA, "visit20_n_agents_BPstatus.csv")
 
+# visit_n_agents.csv: n_agents(columns) by visit (rows)
+# note: includes those not taking any antihypertensive meds
+write.table(test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table() %>% addmargins(), row.names=T, col.names=NA,"visit_n_agents.csv")
