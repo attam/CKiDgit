@@ -217,3 +217,4 @@ unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.correcte
 table4<-unsorted[sort(unsorted[,1], decreasing=T,index.return=T)$ix,]
 write.table(table4,row.names=T, col.names=NA,"visit_medcounts.csv")
 table4
+#this is a test
