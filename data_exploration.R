@@ -47,12 +47,12 @@ pe %>% select(VISIT, PEPRBLPM)%>% group_by(VISIT) %>% table %>% addmargins()
 #l31<-rename(l31, "SMWBAGEP.2"=SMWBAGEP)
 
 echo_df<-echo %>% select(CASEID,VISIT,ECHODATEY,LVMI,LVHF,LVHE,CAUTION)
+echo_df %>% group_by(VISIT) %>% filter(CAUTION==0) %>% summarise_at(vars(ECHODATEY), funs(date_mean=mean,date_min=min,date_max=max, n_pts=length))
+
 # loads the correct BP medication names into BP_medlist
 # and corrects BP medication names for brand names and misspellings
 # corrected names are assigned a new variable called med.corrected
 # display information about timing of echocardiogram data, grouped by visits
-echo_df %>% group_by(VISIT) %>% filter(CAUTION==0) %>% summarise_at(vars(ECHODATEY), funs(date_mean=mean,date_min=min,date_max=max, n_pts=length))
-
 load("BP_medlist.RData")
 # note: BP_medlist will display the misspelled/brand names of BP meds, frequency at visit 10?, and corrected names
 medsum_full$med.corrected<-BP_medlist$Corrected.Name[match(medsum_full$MSMEDICA,BP_medlist$Var1)]
@@ -194,10 +194,26 @@ library(corrplot,ggplot2)
 corrplot(chisq$residuals, is.cor = FALSE)
 
 # writing table files
-# visit20_n_agents_BPstatus.csv: n_agents (rows) by BP status (columns) in VISIT 20 only
+#table1
+# visit20_BPstatus_n_agents.csv: BP status (columns) by number of agents (rows) in VISIT 20 only
 # note: includes those with unknown BP status (-1), due to unknown clinic BP percentile, or unsuccessfull ABPM study
-write.table(test %>% filter(VISIT==20) %>% select(n_agents,BPstatus) %>% table() %>% addmargins(),row.names=T, col.names=NA, "visit20_n_agents_BPstatus.csv")
+table1<-test %>% filter(VISIT==20) %>% select(n_agents,BPstatus) %>% table() %>% addmargins()
+write.table(table1,row.names=T, col.names=NA, "visit20_BPstatus_n_agents.csv")
+table1
 
-# visit_n_agents.csv: n_agents(columns) by visit (rows)
+# n_agents_visit.csv: n_agents(columns) by visit (rows)
 # note: includes those not taking any antihypertensive meds
-write.table(test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table() %>% addmargins(), row.names=T, col.names=NA,"visit_n_agents.csv")
+table2<-test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table() %>% addmargins()
+write.table(table2, row.names=T, col.names=NA,"n_agents_visit.csv")
+table2
+
+# BPstatus_visit.csv: BPstatus (columns) by visit (rows, only even visits when ABPM obtained)
+table3<-test %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus!=-1) %>% select(BPstatus) %>% table() %>% addmargins()
+write.table(table3,row.names=T, col.names = NA, "BPstatus_visit.csv")
+table3
+
+# Counts of patients on each antihypertensive medication grouped by visit and sorted (descending)
+unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=q$n_rx~addNA(factor(q$med.corrected))+q$VISIT)
+table4<-unsorted[sort(unsorted[,1], decreasing=T,index.return=T)$ix,]
+write.table(table4,row.names=T, col.names=NA,"visit_medcounts.csv")
+table4
