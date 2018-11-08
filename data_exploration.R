@@ -139,6 +139,25 @@ medsum_full.3<-full_join(test %>% select(CASEID,VISIT,AVWEIGHT),medsum_full.2) %
 medsum_full.4<-medsum_full.3 %>% nest(c(7:10), .key="rx_info")
 medsum_full.4<-dcast(medsum_full.4,CASEID+VISIT+MSVISDAT+n_agents~med.corrected, value.var="rx_info")
 
+change_null_to_list <- function(x) {
+       # If x is a data frame, do nothing and return x
+         # Otherwise, return a data frame with 1 row of NAs
+         if (!is.null(x)) {return(x)}
+       else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA)))))}
+}
+
+# replace all NULL values of drugs with a tibble containing NA's using change_null_to_list function above
+# note: the line below takes approx 5 min to complete, so will save results to medsum_full4.RData file and read it into memory
+# the line will be commented to save time
+# for (i in 5:55) {medsum_full.4[[names(medsum_full.4)[i]]]<-lapply(medsum_full.4[[names(medsum_full.4)[i]]],change_null_to_list)}
+# save(medsum_full.4, file='medsum_full4.RData')
+load(file='medsum_full4.RData')
+
+# function to extract rx_info given x (a data.frame), rx (either name of the drug, eg "AMLODIPINE", or index corresponding to the column containing the drug info) and param (1 = BPmedgroup, 2=DLYFREQ, 3=DLYDOSE, 4=std_dose ie, per kg)
+get_drug_info <-function(x,rx,param) {
+  if (typeof(rx)=="character") rx<-which(names(x)==rx)
+  return(unlist(lapply(x[,rx],'[[',param)))}
+
 test<-full_join(medsum_full.4,test)
 
 # replace all missing n_agents values to 0 (patients not taking any antihypertensives)
@@ -156,14 +175,17 @@ test<-test %>% mutate(ckidfull=39.8*term1*term2*term3*term4*if_else(male1fe0==1,
 
 # add column for urine protein:creatinine ratio based on RLURPROT and RLURCREA
 # add column for percentage of total urine protein that is albumin (Ualb_pct)
-test %>% mutate(Upc=RLURPROT/RLURCREA)
-test %>% mutate(Ualb_pct=RLURMALB/RLURPROT)
+test<-test %>% mutate(Upc=RLURPROT/RLURCREA)
+test<-test %>% mutate(Ualb_pct=RLURMALB/RLURPROT)
 
 # add a column for CKD stage using ckidfull
 test$CKD_stage <- cut(test$ckidfull, 
-                      breaks = c(-Inf, 15, 30, 60, 90, Inf), 
-                      labels=c(5:1),ordered_result=TRUE, 
-                      right = FALSE)
+                      breaks = c(Inf, 90, 60, 30, 15, -Inf), 
+                      labels=c(1:5),ordered_result=TRUE, 
+                      right = T)
+
+# create categories for proteinuria based on cutoffs noted below
+test$Upc.factor<-cut(test$Upc,breaks=c(-Inf,0.5,1,2,Inf),labels=c("normal","mild","moderate","severe"),ordered_result = T,right=F)
 
 # add columns for new 2017 AAP BP percentiles and z-scores (this takes about 2 minutes to calculate)
 source('BPz/bpzv2.R')
@@ -213,7 +235,7 @@ write.table(table3,row.names=T, col.names = NA, "BPstatus_visit.csv")
 table3
 
 # Counts of patients on each antihypertensive medication grouped by visit and sorted (descending)
-unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=q$n_rx~addNA(factor(q$med.corrected))+q$VISIT)
+unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=n_rx~addNA(factor(med.corrected))+VISIT)
 table4<-unsorted[sort(unsorted[,1], decreasing=T,index.return=T)$ix,]
 write.table(table4,row.names=T, col.names=NA,"visit_medcounts.csv")
 table4
