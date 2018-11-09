@@ -15,17 +15,19 @@
 # it returns a percentile for both SBP and DBP
 # sbp and dbp must be > 0
 # will return 0 or 100 if bp percentile is <1st or >99th, respectively
-# outputstyle: percentile = 1, z-score=2 note: z-scores for percentiles
+# outputstyle: percentile = 1, z-score=2, lookup=3 (*) note: z-scores for percentiles
 # outside of the range 1-99 will be assigned z-scores of -/+ 2.33
+# * if outputstyle = 3, the output will use first parameter as desired BP percentile and will return
+# a BP corresponding with the desired percentile
 
 library("dplyr", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
 source('BPz/htz.R')
 #setwd("")
-load("BPz/BPcoefs.RData")
+if (!exists("BPcoef") | !exists("all_t")) load("BPz/BPcoefs.RData")
 # gender = 1 for male, 0 for female
 # sysdia = 1 for systolic, 2 for diastolic
 
-bpp <- function(bp=bp,age,ht,mf,sysdia=sysdia,outputstyle) {
+bpp <- function(bp=bp,age,ht,mf,sysdia=sysdia,outputstyle=outputstyle) {
   if (anyNA(c(bp,age,ht,mf))) return(NA)
   # get height z-score, and if outside the range +/- 3.09, set it to 3.09
   htz<-htz(ht,age,mf)
@@ -77,6 +79,9 @@ bpp <- function(bp=bp,age,ht,mf,sysdia=sysdia,outputstyle) {
   bpp<-p
   if (outputstyle==2) {
   bpp<-qnorm(bpp/100)
+  }
+  if (outputstyle==3){
+    bpp<-fx[bp]
   }
   bpp
   }
