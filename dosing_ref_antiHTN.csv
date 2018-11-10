@@ -1,0 +1,25 @@
+Drug,max_mgkg,max_mg,renal_adj,renal_comment,other
+ENALAPRIL,0.58,40,,,
+LISINOPRIL,0.6,40,50,50% if GFR 10-50; 25% if GFR<10,
+AMLODIPINE,0.6,10,,,
+LOSARTAN,1.4,100,,avoid if GFR<30,
+FUROSEMIDE,18,600,,,
+HYDROCHLOROTHIAZIDE,3,50,,avoid if GFR<30,
+LABETALOL,12,1200,,,
+NIFEDIPINE,3,120,,,
+ATENOLOL,2,100,,,
+CLONIDINE,,2.4,,decrease dose if decreased GFR,0.9mg/day in other source
+RAMIPRIL,,20,,,
+CANDESARTAN,0.4,32,,,1-6y: 0.4mg/kg/d; >6y: 0.32mg/kg/d
+CAPTOPRIL,6,450,50,75% if GFR 10-50; 50% if GFR<10,
+BENAZEPRIL,0.6,40,,avoid if GFR<30,
+VALSARTAN,2.7,160,,,
+PROPRANOLOL,4,640,,,others have suggested higher max (16/kg/day)
+TAMSULOSIN,,,,,
+CHLOROTHIAZIDE,40,2000,,avoid if GFR<10,
+FOSINOPRIL,0.6,40,,,
+HYDRALAZINE,7.5,200,,,
+ISRADIPINE,0.8,20,,,
+AMILORIDE,0.625,20,,use with caution if decreased GFR,
+METOPROLOL,6,200,,,
+CARVEDILOL,,80,,,immediate release max: 50mg/day
