@@ -113,10 +113,11 @@ test<-full_join(gh %>% select(CASEID,VISIT,GHGENDER,GHWKSBDD,GHPREMIE),test)
 test<-full_join(kidhist %>% select(CASEID,DOB,BSDATE, CKDONST,PRIMDX,GNGDIAG),test)
 test<-full_join(l05 %>% select(CASEID,VISIT,RLSERCRE,RLURPROT,RLURMALB,RLURCREA),test)
 test<-full_join(echo_df %>% select(CASEID,VISIT,LVHF,LVHE,LVMI,ECHODATEY,CAUTION),test)
-test<-full_join(cardio %>% select(CASEID,VISIT,DB_DATE,SBP,SBPINDXAGH,SBPPCTAGH,SBPZAGH,DBP,DBPINDXAGH,DBPPCTAGH,DBPZAGH,ABPM_DATE,ABPMSUCCESS,BPstatus),test)
+test<-full_join(cardio %>% select(CASEID,VISIT,DB_DATE,SBP,SBPINDXAGH,SBPPCTAGH,SBPZAGH,DBP,DBPINDXAGH,DBPPCTAGH,DBPZAGH,ABPM_DATE,ABPMSUCCESS,SHYPAGH,DHYPAGH,BPstatus),test)
 
 # this was compared with age from pierce et al and correlates well, but not perfectly
 # note: age from pierce is in integers, not decimals
+# due to DOB provided in integer form, the true age may be off by up to 1 year (eg, born 1/1/1994 = DOB 1994, baseline date 12/31/2000 = BSDATE 2000, calculated age = 6yrs, true age=7yrs)
 test$age<-(test$BSDATE-test$DOB)+test$DB_DATE
 
 # gender: since some values of MALE1FE0 are missing, will solve missing values by taking the mean of MALE1FE0 for each case (no change in gender over time)
@@ -184,16 +185,15 @@ test$CKD_stage <- cut(test$ckidfull,
                       labels=c(1:5),ordered_result=TRUE, 
                       right = T)
 
-# create categories for proteinuria based on cutoffs noted below
+# create categories for proteinuria based on cutoffs noted
 test$Upc.factor<-cut(test$Upc,breaks=c(-Inf,0.5,1,2,Inf),labels=c("normal","mild","moderate","severe"),ordered_result = T,right=F)
 
 # add columns for new 2017 AAP BP percentiles and z-scores (this takes about 2 minutes to calculate)
 source('BPz/bpzv2.R')
-test$SBPPCTAGH2017<-mapply(bpp,test$SBP,test$age, test$AVHEIGHT,test$male1fe0,1,1)
-test$DBPPCTAGH2017<-mapply(bpp,test$DBP,test$age, test$AVHEIGHT,test$male1fe0,2,1)
-test$SBPZAGH2017<-mapply(bpp,test$SBP,test$age, test$AVHEIGHT,test$male1fe0,1,2)
-test$DBPZAGH2017<-mapply(bpp,test$DBP,test$age, test$AVHEIGHT,test$male1fe0,2,2)
-
+test$SBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,1,test$SBP, z=F)
+test$DBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,2,test$DBP, z=F)
+test$SBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,1,test$SBP, z=T)
+test$DBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,2,test$DBP, z=T)
 
 # data overview found in file "overview of data"
 # this is a test to see how changes as handled in git
@@ -239,4 +239,9 @@ unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.correcte
 table4<-unsorted[sort(unsorted[,1], decreasing=T,index.return=T)$ix,]
 write.table(table4,row.names=T, col.names=NA,"visit_medcounts.csv")
 table4
-#this is a test [i made a change here]
+
+# counts of missing BP measurements
+# 1 = one of SBP or DBP are missing
+# 2 = both SBP and DBP are missing
+# 0 = SBP and DBP are measured
+table(is.na(test$SBP)+is.na(test$DBP))

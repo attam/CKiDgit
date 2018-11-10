@@ -11,29 +11,28 @@
 # either systolic or diastolic BP (must specify using 1 or 2 as the last argument, respectively)
 # age in years (must be between 0 and 18 years)
 # height in cm (must be > 0, and height z-score must be within the range +/- 3.09, otherwise, will return NA)
+# gender = 1 for male, 0 for female
+# sysdia = 1 for systolic, 2 for diastolic
 # 
-# it returns a percentile for both SBP and DBP
+# options for output:
+# if bp parameter is set, will return the corresponding z-score if z=TRUE or percentile if z=FALSE
+# if percentile parameter is set, it will return BP corresponding to desired percentile
 # sbp and dbp must be > 0
-# will return 0 or 100 if bp percentile is <1st or >99th, respectively
-# outputstyle: percentile = 1, z-score=2, lookup=3 (*) note: z-scores for percentiles
+# will return 0.99 or 99.99 if bp percentile is <1st or >99th, respectively
 # outside of the range 1-99 will be assigned z-scores of -/+ 2.33
-# * if outputstyle = 3, the output will use first parameter as desired BP percentile and will return
-# a BP corresponding with the desired percentile
 
 library("dplyr", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
 source('BPz/htz.R')
 #setwd("")
 if (!exists("BPcoef") | !exists("all_t")) load("BPz/BPcoefs.RData")
-# gender = 1 for male, 0 for female
-# sysdia = 1 for systolic, 2 for diastolic
 
-bpp <- function(bp=bp,age,ht,mf,sysdia=sysdia,outputstyle=outputstyle) {
-  if (anyNA(c(bp,age,ht,mf))) return(NA)
-  # get height z-score, and if outside the range +/- 3.09, set it to 3.09
+
+bpp <- function(age,ht,mf,sysdia=sysdia,bp=NULL, z=NULL, percentile=NULL) {
   htz<-htz(ht,age,mf)
   # if arguments are outside of allowable ranges, return NA
-  if (any(!between(age,0,18),ht<0,abs(htz)>3.09,bp<0, is.na(bp))) return(NA)
-
+  if (any(!between(age,0,18),ht<0,anyNA(c(age,ht,mf)))) return(NA)
+  # get height z-score, and if outside the range +/- 3.09, set it to 3.09
+  if (abs(htz)>3.09) htz<-ifelse(htz<0,htz<- (-3.09),3.09)
   # set t values based on gender
   if(mf==1) {
     t<-all_t[,1:3]
@@ -67,22 +66,24 @@ bpp <- function(bp=bp,age,ht,mf,sysdia=sysdia,outputstyle=outputstyle) {
   w2s<-(w2[1]^3-w2[2]^3*((t[5,3]-t[1,3])/(t[5,3]-t[4,3]))+w2[3]^3*((t[4,3]-t[1,3])/(t[5,3]-t[4,3])))/100^2
   w3s<-(w3a^3-w2[2]^3*((t[5,3]-t[2,3])/(t[5,3]-t[4,3]))+w2[3]^3*((t[4,3]-t[2,3])/(t[5,3]-t[4,3])))/100^2
   w4s<-(w4a^3-w2[2]^3*((t[5,3]-t[3,3])/(t[5,3]-t[4,3]))+w2[3]^3*((t[4,3]-t[3,3])/(t[5,3]-t[4,3])))/100^2
-  
+
   if (sysdia==1) dbp_o<-0 else dbp_o<-13
   fx<-bpc[,1+dbp_o]+bpc[,6+dbp_o]*ht+bpc[,7+dbp_o]*x2s+bpc[,8+dbp_o]*x3s+
     bpc[,9+dbp_o]*x4s+bpc[,2+dbp_o]*age+bpc[,3+dbp_o]*y2s+bpc[,4+dbp_o]*y3s+bpc[,5+dbp_o]*y4s+
     bpc[,10+dbp_o]*w+bpc[,11+dbp_o]*w2s+bpc[,12+dbp_o]*w3s+bpc[,13+dbp_o]*w4s
-  dif<-abs(bp-fx)
-  p<-which.min(as.numeric(unlist(dif)))
-    if (bp<fx[1]) p<-0.99 
-    if (bp>fx[99]) p<-99.1 
-  bpp<-p
-  if (outputstyle==2) {
-  bpp<-qnorm(bpp/100)
+  if (!is.null(percentile)) {
+    return(fx[percentile])
+  } else {
+    if (any(is.na(bp),bp<0)) return(NA)
+    dif<-abs(bp-fx)
+    # the following lines interpolates to find the closest percentile with 1 decimal precision
+    # and handles the extreme cases, <1st percentile or >99th percentile
+    pclosest<-which.min(as.numeric(unlist(dif)))
+    if (bp<fx[1]) return(0.99)
+    if (bp>fx[99]) return(99.1)
+    if (pclosest==99) return(99)
+    p<-round(pclosest+(1-dif[pclosest]/fx[pclosest]/(dif[pclosest+1]/fx[pclosest+1])),1)
+    ifelse(z, return(qnorm(p/100)),return(p))
   }
-  if (outputstyle==3){
-    bpp<-fx[bp]
-  }
-  bpp
   }
 

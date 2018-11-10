@@ -2,7 +2,7 @@
 # reference: http://pediatrics.aappublications.org/content/114/Supplement_2/555
 # inputs:
 #    - age (yrs)
-#    - height percentile
+#    - height percentile (0-100)
 #    - gender (male=1, female=0)
 #    - sysdia (1 for systolic, 2 for diastolic)
 #    - bp (either sbp or dbp) - if inverse function is used, the percentile argument must be set (see below)
@@ -22,12 +22,12 @@ bpp4<- function(age,heightp,gender,sysdia,bp=NULL,percentile=NULL) {
   bp4th_coefs.1<-bp4th_coefs.1[c(sysdia)]
   # calculation of average BP (mu) is based on reference above (appendix B)
   first<-function(x,age) bp4th_coefs.1[1+x,1]*(age-10)^x
-  second<-function(x,heightp) bp4th_coefs.1[x+5,1]*heightp^x
+  second<-function(x,heightz) bp4th_coefs.1[x+5,1]*heightz^x
   sum1<-sum(unlist(sapply(1:4,function(x) first(x,age))))
   sum2<-sum(unlist(sapply(1:4,function(x) second(x,qnorm(heightp/100)))))
   mu<-unlist(bp4th_coefs.1[1,1]+sum1+sum2)
   if (!is.null(percentile)) {
-    bpp4<-qnorm(percentile/100)*unlist(bp4th_coefs.1[10,1])+mu}
+    bpp4<-round(qnorm(percentile/100)*unlist(bp4th_coefs.1[10,1])+mu,2)}
   else {
   bpp4<-round(pnorm((bp-mu)/unlist(bp4th_coefs.1[10,1]))*100,2)}
   return(bpp4)
