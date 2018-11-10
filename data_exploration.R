@@ -195,6 +195,13 @@ test$DBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,2,test$DBP, 
 test$SBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,1,test$SBP, z=T)
 test$DBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,2,test$DBP, z=T)
 
+# classification of BP status based on 4th report and 2017 guidelines
+test$BPstatus2017<-mapply(BPstatus2017,test$SBP,test$DBP,test$age,test$male1fe0,test$AVHEIGHT)
+test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$male1fe0,test$HTPCTAG, test$SBPPCTAGH,test$DBPPCTAGH)
+
+# table to demonstrate differences in classification of patients during visit 20
+test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(useNA = "always") %>% addmargins()
+
 # data overview found in file "overview of data"
 # this is a test to see how changes as handled in git
 
