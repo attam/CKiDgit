@@ -17,7 +17,7 @@ dose_ref <- read_csv("dosing_ref_antiHTN.csv")
 
 DDI <-function(dose, drug,weight,gfr) {
   drug<-toupper(drug)
-  if (is.na(match(drug,dose_ref$Drug))) return(NA)
+  if (is.na(match(drug[1],dose_ref$Drug))) return(NA)
   dose_ref<-dose_ref %>% filter(Drug==drug)
   
   # adjustment for decreased GFR
@@ -27,7 +27,8 @@ DDI <-function(dose, drug,weight,gfr) {
   if (drug=="CAPTOPRIL") dose_adj<-ifelse(between(gfr,10,50), 0.75,ifelse(gfr<10,0.5,1))
   dose_ref[2:3]<-dose_ref[2:3]*dose_adj
   }
-
-  DDI<-ifelse(weight*dose_ref[2]>dose_ref[3], dose/dose_ref[3],(dose/weight)/dose_ref[2])
+  if (is.na(dose_ref[2])) {DDI<-dose/dose_ref[3]} else {
+  DDI<-ifelse(weight*dose_ref[2]>dose_ref[3], dose/dose_ref[3],(dose/weight)/dose_ref[2])}
+  names(DDI)<-"DDI"
   return (unlist(DDI))
 }

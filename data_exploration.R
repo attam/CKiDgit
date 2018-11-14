@@ -61,15 +61,6 @@ BP_medgroups <- read.csv("BP_medgroups.csv")
 medsum_full$BPmedgroup<-BP_medgroups$bp_group[match(medsum_full$med.corrected,BP_medgroups$x)]
 # add a column containing the number of distinct antihypertensive agents (n_agents) taken by a patient at that visit
 medsum_full<-medsum_full %>% filter(!is.na(BPmedgroup)) %>% group_by(CASEID,VISIT) %>% mutate(n_agents=n_distinct(med.corrected))
-
-# displays the number of patients at each visit in the medsum_full data
-medsum_full %>% select(CASEID,VISIT) %>% group_by(VISIT) %>% distinct() %>% tally
-
-# displays the number of patients taking BP meds grouped by visit and number of agents
-medsum_full %>% select(CASEID,VISIT,n_agents) %>% group_by(VISIT) %>% select(n_agents) %>% table()
-
-# generates and displays a column for the number of antihypertensive agents for each patient at each visit
-medsum_full %>% filter(!is.na(BPmedgroup)) %>% group_by(CASEID,VISIT) %>% summarise(n_agents=n_distinct(med.corrected))
                                                                                     
 # display information about timing of ABPM data, grouped by visits
 cardio%>% filter(ABPMSUCCESS==1) %>% group_by(VISIT) %>% summarise_at(vars(ABPM_DATE), funs(date_mean=mean,date_min=min,date_max=max,n_pts=length))
@@ -91,7 +82,7 @@ cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSI
 cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=ABPM_DATE-DB_DATE) %>% group_by(VISIT) %>% summarise_at(vars(date_dif),funs(mean_dif_days=365*mean(.,na.rm=TRUE),max_dif_yr=max, sd_dif_yr=sd(.,na.rm=TRUE)))
 # display the number of observations where the difference between the date of visit and the ABPM date is > 60 days (=TRUE)
 # consider excluding these observations since the BP status is less reliable
-cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=ABPM_DATE-DB_DATE) %>% group_by(VISIT) %>% mutate(big_dif=date_dif>60/365) %>% select(big_dif) %>% table %>% addmargins
+cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=abs(ABPM_DATE-DB_DATE)) %>% group_by(VISIT) %>% mutate(big_dif=date_dif>60/365) %>% select(big_dif) %>% table %>% addmargins
 # display the counts for all the BP statuses grouped by visit
 # patients with BP status -1 occured when casual BP was not classified (either no BP entered at that visit, or BP entered, but no percentile/z-score)
 cardio %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus !=-1) %>% select(BPstatus) %>% table() %>% addmargins
@@ -124,49 +115,6 @@ test$age<-(test$BSDATE-test$DOB)+test$DB_DATE
 test<-test %>% group_by(CASEID) %>% mutate(male1fe0=mean(MALE1FE0, na.rm=TRUE))
 
 
-# organize medication data
-
-#old: medsum_full.2<- medsum_full.2 %>% group_by(CASEID,VISIT,MSVISDAT,med.corrected, DLYFREQ,BPmedgroup,n_agents) %>% summarise_at(vars(DLYDOSE),sum)
-# old: medsum_full.2<- medsum_full.2 %>% group_by(CASEID,VISIT,MSVISDAT,med.corrected, n_agents,BPmedgroup,DLYFREQ) %>% summarise_at(vars(DLYDOSE),sum) %>% ungroup() %>% nest(c(6:8), .key="rx_info")
-# old version: medsum_full.3<-dcast(medsum_full.2,CASEID+VISIT+MSVISDAT+DLYFREQ+BPmedgroup+n_agents~med.corrected, value.var="DLYDOSE")
-#old: medsum_full.4<-medsum_full.3 %>% group_by(CASEID,VISIT) %>% summarise_at(c(6:57),mean, na.rm=TRUE)
-# old: calculate mg/kg for each drug
-#test<-test %>% mutate_at(.vars=c(5:55),funs(mg_kg=if (!is.null(.[[]])) unlist(.)[3]/AVWEIGHT else 0))
-
-# this line generates columns for std_dose (dose per kg, with AVWEIGHT from growth data), corrects
-# for split dosing (eg, labetalol), and nests drug data into a 4 column list called rx_info
-medsum_full.2<-medsum_full
-medsum_full.3<-full_join(test %>% select(CASEID,VISIT,AVWEIGHT),medsum_full.2) %>% select(CASEID,VISIT,MSVISDAT,med.corrected,n_agents,BPmedgroup,DLYFREQ,DLYDOSE,AVWEIGHT) %>% mutate(std_dose=DLYDOSE/AVWEIGHT) %>% group_by(CASEID,VISIT,MSVISDAT,med.corrected, n_agents,AVWEIGHT,BPmedgroup,DLYFREQ) %>% summarise_at(vars(DLYDOSE),sum) %>% ungroup() %>% mutate(std_dose=DLYDOSE/AVWEIGHT)
-medsum_full.4<-medsum_full.3 %>% nest(c(7:10), .key="rx_info")
-medsum_full.4<-dcast(medsum_full.4,CASEID+VISIT+MSVISDAT+n_agents~med.corrected, value.var="rx_info")
-
-change_null_to_list <- function(x) {
-       # If x is a data frame, do nothing and return x
-         # Otherwise, return a data frame with 1 row of NAs
-         if (!is.null(x)) {return(x)}
-       else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA)))))}
-}
-
-# replace all NULL values of drugs with a tibble containing NA's using change_null_to_list function above
-# note: the line below takes approx 5 min to complete, so will save results to medsum_full4.RData file and read it into memory
-# the line will be commented to save time
-# for (i in 5:55) {medsum_full.4[[names(medsum_full.4)[i]]]<-lapply(medsum_full.4[[names(medsum_full.4)[i]]],change_null_to_list)}
-# save(medsum_full.4, file='medsum_full4.RData')
-load(file='medsum_full4.RData')
-
-# function to extract rx_info given x (a data.frame), rx (either name of the drug, eg "AMLODIPINE", or index corresponding to the column containing the drug info) and param (1 = BPmedgroup, 2=DLYFREQ, 3=DLYDOSE, 4=std_dose ie, per kg)
-get_drug_info <-function(x,rx,param) {
-  if (typeof(rx)=="character") rx<-which(names(x)==rx)
-  return(unlist(lapply(x[,rx],'[[',param)))}
-
-test<-full_join(medsum_full.4,test)
-
-# replace all missing n_agents values to 0 (patients not taking any antihypertensives)
-test$n_agents[is.na(test$n_agents)]<-0
-
-#add LVMI/BSA variable
-#test<- test %>% mutate(LVMI_BSA=LVMI/BSA)
-
 #add ckidfull [the best estimated gfr for research based on Schwartz and Schneider 2012]
 test<-test %>% mutate(term1=((AVHEIGHT/100)/SCR)^0.456)
 test<-test %>% mutate(term2=(1.8/CYC_DB)^0.418)
@@ -188,6 +136,49 @@ test$CKD_stage <- cut(test$ckidfull,
 # create categories for proteinuria based on cutoffs noted
 test$Upc.factor<-cut(test$Upc,breaks=c(-Inf,0.5,1,2,Inf),labels=c("normal","mild","moderate","severe"),ordered_result = T,right=F)
 
+# organize medication data
+
+#old: medsum_full.2<- medsum_full.2 %>% group_by(CASEID,VISIT,MSVISDAT,med.corrected, DLYFREQ,BPmedgroup,n_agents) %>% summarise_at(vars(DLYDOSE),sum)
+# old: medsum_full.2<- medsum_full.2 %>% group_by(CASEID,VISIT,MSVISDAT,med.corrected, n_agents,BPmedgroup,DLYFREQ) %>% summarise_at(vars(DLYDOSE),sum) %>% ungroup() %>% nest(c(6:8), .key="rx_info")
+# old version: medsum_full.3<-dcast(medsum_full.2,CASEID+VISIT+MSVISDAT+DLYFREQ+BPmedgroup+n_agents~med.corrected, value.var="DLYDOSE")
+#old: medsum_full.4<-medsum_full.3 %>% group_by(CASEID,VISIT) %>% summarise_at(c(6:57),mean, na.rm=TRUE)
+# old: calculate mg/kg for each drug
+#test<-test %>% mutate_at(.vars=c(5:55),funs(mg_kg=if (!is.null(.[[]])) unlist(.)[3]/AVWEIGHT else 0))
+
+# this line generates columns for std_dose (dose per kg, with AVWEIGHT from growth data), corrects
+# for split dosing (eg, labetalol), and nests drug data into a 5 column list called rx_info
+# the drug dose index is the 5th column, and uses gfr based on ckidfull equation if possible, otherwise bedside GFR is used
+source("DDI.R")
+medsum_full.2<-medsum_full
+medsum_full.3<-full_join(test %>% select(CASEID,VISIT,AVWEIGHT,ckidfull,BEDGFR),medsum_full.2)
+medsum_full.3<-medsum_full.3 %>% group_by(CASEID,VISIT,MSVISDAT,ckidfull,AVWEIGHT,med.corrected,n_agents,BPmedgroup,DLYFREQ,BEDGFR) %>% filter(DLYDOSE>0) %>% summarise_at(vars(DLYDOSE), sum) %>% mutate(std_dose=DLYDOSE/AVWEIGHT)
+medsum_full.3<- medsum_full.3 %>% mutate(DDI=DDI(DLYDOSE,med.corrected,AVWEIGHT,ifelse(is.na(ckidfull),BEDGFR,ckidfull)))
+medsum_full.4<-medsum_full.3 %>% ungroup %>% nest(-c(1:7,10), .key="rx_info") %>% select(-c(4:5))
+medsum_full.4<-dcast(medsum_full.4,CASEID+VISIT+MSVISDAT+n_agents~med.corrected, value.var="rx_info")
+
+
+# save(medsum_full.4, file='medsum_full4.RData')
+load(file='medsum_full4.RData')
+
+test<-full_join(medsum_full.4,test)
+
+# replace all NULL values of drugs with a tibble containing NA's using change_null_to_list function above
+# note: the line below takes approx 5 min to complete, so will save results to medsum_full4.RData file and read it into memory
+# the line will be commented to save time
+change_null_to_list <- function(x) {
+  # If x is a data frame, do nothing and return x
+  # Otherwise, return a data frame with 1 row of NAs
+  if (!is.null(x)) {return(x)}
+  else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA),DDI=as.numeric(NA)))))}
+}
+# for (i in 5:45) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
+
+# replace all missing n_agents values to 0 (patients not taking any antihypertensives)
+test$n_agents[is.na(test$n_agents)]<-0
+
+#add LVMI/BSA variable
+#test<- test %>% mutate(LVMI_BSA=LVMI/BSA)
+
 # add columns for new 2017 AAP BP percentiles and z-scores (this takes about 2 minutes to calculate)
 source('BPz/bpzv2.R')
 test$SBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,1,test$SBP, z=F)
@@ -195,9 +186,16 @@ test$DBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,2,test$DBP, 
 test$SBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,1,test$SBP, z=T)
 test$DBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,2,test$DBP, z=T)
 
+source('BPstatus4th.R')
+source('BPstatus2017.R')
+source('bpp4.R')
 # classification of BP status based on 4th report and 2017 guidelines
 test$BPstatus2017<-mapply(BPstatus2017,test$SBP,test$DBP,test$age,test$male1fe0,test$AVHEIGHT)
 test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$male1fe0,test$HTPCTAG, test$SBPPCTAGH,test$DBPPCTAGH)
+
+# to save time, use this as starting point...
+#save(test, file="test.RData")
+load(file="test.RData")
 
 # table to demonstrate differences in classification of patients during visit 20
 test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(useNA = "always") %>% addmargins()
@@ -252,3 +250,23 @@ table4
 # 2 = both SBP and DBP are missing
 # 0 = SBP and DBP are measured
 table(is.na(test$SBP)+is.na(test$DBP))
+
+# parse drug info stored in test as separate variables for analysis
+source("get_drug_info.R")
+drugname<-names(test)[5:45]
+temp <- paste(drugname[1:41], "<- get_drug_info(test,'",drugname,"', c(1:5))", sep="")
+eval(parse(text=temp))
+
+temp.1<-paste("test$",drugname[1:41],"_DDI<-",drugname[1:41],"$DDI", sep="")
+temp.2<-paste("test$",drugname[1:41],"_std_dose<-",drugname[1:41],"$std_dose", sep="")
+eval(parse(text=temp.1))
+eval(parse(text=temp.2))
+
+# draw histograms of DDI for each drug
+temp<-paste("if (!all(is.na(",drugname[1:41],"$DDI))) hist(",drugname[1:41],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:41],"\"))", sep="")
+par(mfrow=c(6,4))
+par(mar=c(2,2,1,1))
+eval(parse(text=temp))
+
+# comparing patients based on DDI
+temp_DDI<-test%>% select(ends_with('_DDI')) %>% as.matrix %>% apply(.,1,sort,decreasing=T,na.last=T)
