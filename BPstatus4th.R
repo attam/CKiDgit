@@ -19,16 +19,16 @@ bpstatus4th<-function(sbp,dbp,age,gender,heightp, sbpp4=NULL, dbpp4=NULL) {
     if (!all(is.na(c(sbp,dbp)))) {
     if (sbp<120 & dbp<80) return (0)
     if (sbp>=160 | dbp>=100) return (3)
-    if ((sbp>140 & sbp<160) | (dbp>=90 & dbp<100)) return(2)
+    if ((sbp>=140 & sbp<160) | (dbp>=90 & dbp<100)) return(2)
     return (1)
     } else return(NA)
   }
-  if (is.null(sbpp4)) sbpp4<-bpp4(age,heightp,gender,1,sbp)
-  if (is.null(dbpp4)) dbpp4<-bpp4(age,heightp,gender,2,dbp)
+  if (is.null(sbpp4) | is.na(sbpp4)) sbpp4<-bpp4(age,heightp,gender,1,sbp)
+  if (is.null(dbpp4) | is.na(dbpp4)) dbpp4<-bpp4(age,heightp,gender,2,dbp)
   if (!all(is.na(c(sbpp4,dbpp4)))) {
   if (all(sbpp4<90,dbpp4<90,sbp<120,dbp<80, na.rm=T)) return (0)
-  sbpp<-sapply(c(90,95,99),function(x) bpp4(age,heightp,gender,1,percentile=x))
-  dbpp<-sapply(c(90,95,99),function(x) bpp4(age,heightp,gender,2,percentile=x))
+  sbpp<-bpp4(age,heightp,gender,1,percentile=c(90,95,99))
+  dbpp<-bpp4(age,heightp,gender,2,percentile=c(90,95,99))
   if (any(sbp>sbpp[3]+5,dbp>dbpp[3]+5,sbp>=160,dbp>=100, na.rm=T)) return(3)
   if (any(between(sbp,sbpp[2],sbpp[3]+5),between(dbp,dbpp[2],dbpp[3]+5),between(sbp,140,159.9),between(dbp,90,99.9),na.rm=T)) return(2)
   return(1)

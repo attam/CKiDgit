@@ -4,7 +4,7 @@
 # height (in cm)
 # age (in yrs)
 # gender (1=male, or 0=female)
-# it returns a z-score for the corresponding height
+# it returns a z-score for the corresponding height (or percentile if p is set to any value)
 # limitations:
 # will return invalid result if age < 0, and will use height z-score for 18-years when age > 18y
 
@@ -12,7 +12,7 @@
 load("BPz/htz.RData")
 # gender = 1 for male, 0 for female
 
-htz <- function(ht,age,mf) {
+htz <- function(ht,age,mf, p=NULL) {
   if (anyNA(c(ht,age,mf))) return(NA)
   # if arguments are outside of allowable ranges, return NA
   if (any(age<0,ht<0,!any(mf==0 | mf==1))) return(NA)
@@ -24,6 +24,7 @@ htz <- function(ht,age,mf) {
   agerow<-findInterval(age,htz_lms[,1])
   if (mf==1) cols<-2:4 else cols<-5:7
   LMS<-htz_lms[agerow,cols]+(age-htz_lms[agerow,1])*diff(as.matrix(htz_lms[agerow:(agerow+1),cols]))
-  htz<-((ht/LMS[2])^LMS[1]-1)/(LMS[1]*LMS[3])
+  htz<-as.numeric(((ht/LMS[2])^LMS[1]-1)/(LMS[1]*LMS[3]))
+  if (!is.null(p)) htz<-round(pnorm(htz)*100,2)
   return(as.numeric(htz))
 }

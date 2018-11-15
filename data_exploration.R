@@ -42,50 +42,12 @@ gh <- read.csv("data/gh.csv")
 # this is also seen for premature status (growth.csv)
 # the table generated below shows the flagged BP counts grouped by visit (ie, problem measuring BP)
 # consider excluding those with status '1'
-pe %>% select(VISIT, PEPRBLPM)%>% group_by(VISIT) %>% table %>% addmargins()
+# pe %>% select(VISIT, PEPRBLPM)%>% group_by(VISIT) %>% table %>% addmargins()
 # growth appears to contain the best weights after comparing data from pe and growth
-#l31<-rename(l31, "SMWBAGEP.2"=SMWBAGEP)
 
 echo_df<-echo %>% select(CASEID,VISIT,ECHODATEY,LVMI,LVHF,LVHE,CAUTION)
-echo_df %>% group_by(VISIT) %>% filter(CAUTION==0) %>% summarise_at(vars(ECHODATEY), funs(date_mean=mean,date_min=min,date_max=max, n_pts=length))
+# echo_df %>% group_by(VISIT) %>% filter(CAUTION==0) %>% summarise_at(vars(ECHODATEY), funs(date_mean=mean,date_min=min,date_max=max, n_pts=length))
 
-# loads the correct BP medication names into BP_medlist
-# and corrects BP medication names for brand names and misspellings
-# corrected names are assigned a new variable called med.corrected
-# display information about timing of echocardiogram data, grouped by visits
-load("BP_medlist.RData")
-# note: BP_medlist will display the misspelled/brand names of BP meds, frequency at visit 10?, and corrected names
-medsum_full$med.corrected<-BP_medlist$Corrected.Name[match(medsum_full$MSMEDICA,BP_medlist$Var1)]
-# categorize the BP meds into groups based on BP_medgroups.csv
-BP_medgroups <- read.csv("BP_medgroups.csv")
-medsum_full$BPmedgroup<-BP_medgroups$bp_group[match(medsum_full$med.corrected,BP_medgroups$x)]
-# add a column containing the number of distinct antihypertensive agents (n_agents) taken by a patient at that visit
-medsum_full<-medsum_full %>% filter(!is.na(BPmedgroup)) %>% group_by(CASEID,VISIT) %>% mutate(n_agents=n_distinct(med.corrected))
-                                                                                    
-# display information about timing of ABPM data, grouped by visits
-cardio%>% filter(ABPMSUCCESS==1) %>% group_by(VISIT) %>% summarise_at(vars(ABPM_DATE), funs(date_mean=mean,date_min=min,date_max=max,n_pts=length))
-
-# analysis of BP status
-# based on 2009 AHA consensus guidelines
-# BP status is coded as a variable called BPstatus in cardio
-# 0 = normal
-# 1 = White coat hypertension (WCH)
-# 2 = masked hyeprtension (MH)
-# 3 = ambulatory hypertension (AH)
-cardio$BPstatus=-1
-cardio$BPstatus[cardio$WKSYSINDX<0.95 & cardio$WKDIAINDX<0.95 & cardio$SLSYSINDX<0.95 & cardio$SLDIAINDX<0.95 & cardio$WKSYSLOAD<25 & cardio$WKDIALOAD<25 & cardio$SLSYSLOAD<25 & cardio$SLDIALOAD<25 & cardio$SBPPCTAGH<95 & cardio$DBPPCTAGH<95]<-0
-cardio$BPstatus[(cardio$WKSYSINDX<0.95 & cardio$WKDIAINDX<0.95 & cardio$SLSYSINDX<0.95 & cardio$SLDIAINDX<0.95 & cardio$WKSYSLOAD<25 & cardio$WKDIALOAD<25 & cardio$SLSYSLOAD<25 & cardio$SLDIALOAD<25) & (cardio$SBPPCTAGH>=95 | cardio$DBPPCTAGH>=95)]<-1
-cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSINDX>=0.95 | cardio$SLDIAINDX>=0.95 | cardio$WKSYSLOAD>=25 | cardio$WKDIALOAD>=25 | cardio$SLSYSLOAD>=25 | cardio$SLDIALOAD>=25) & (cardio$SBPPCTAGH<95 & cardio$DBPPCTAGH<95)]<-2
-cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSINDX>=0.95 | cardio$SLDIAINDX>=0.95 | cardio$WKSYSLOAD>=25 | cardio$WKDIALOAD>=25 | cardio$SLSYSLOAD>=25 | cardio$SLDIALOAD>=25) & (cardio$SBPPCTAGH>=95 | cardio$DBPPCTAGH>=95)]<-3
-
-# display the time differences between ABPM and casual BP measurement dates
-cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=ABPM_DATE-DB_DATE) %>% group_by(VISIT) %>% summarise_at(vars(date_dif),funs(mean_dif_days=365*mean(.,na.rm=TRUE),max_dif_yr=max, sd_dif_yr=sd(.,na.rm=TRUE)))
-# display the number of observations where the difference between the date of visit and the ABPM date is > 60 days (=TRUE)
-# consider excluding these observations since the BP status is less reliable
-cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=abs(ABPM_DATE-DB_DATE)) %>% group_by(VISIT) %>% mutate(big_dif=date_dif>60/365) %>% select(big_dif) %>% table %>% addmargins
-# display the counts for all the BP statuses grouped by visit
-# patients with BP status -1 occured when casual BP was not classified (either no BP entered at that visit, or BP entered, but no percentile/z-score)
-cardio %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus !=-1) %>% select(BPstatus) %>% table() %>% addmargins
 
 # combining data files
 # selection of candidate variables to include from each data file
@@ -104,7 +66,7 @@ test<-full_join(gh %>% select(CASEID,VISIT,GHGENDER,GHWKSBDD,GHPREMIE),test)
 test<-full_join(kidhist %>% select(CASEID,DOB,BSDATE, CKDONST,PRIMDX,GNGDIAG),test)
 test<-full_join(l05 %>% select(CASEID,VISIT,RLSERCRE,RLURPROT,RLURMALB,RLURCREA),test)
 test<-full_join(echo_df %>% select(CASEID,VISIT,LVHF,LVHE,LVMI,ECHODATEY,CAUTION),test)
-test<-full_join(cardio %>% select(CASEID,VISIT,DB_DATE,SBP,SBPINDXAGH,SBPPCTAGH,SBPZAGH,DBP,DBPINDXAGH,DBPPCTAGH,DBPZAGH,ABPM_DATE,ABPMSUCCESS,SHYPAGH,DHYPAGH,BPstatus),test)
+test<-full_join(cardio %>% select(CASEID,VISIT,DB_DATE,SBP,SBPINDXAGH,SBPPCTAGH,SBPZAGH,DBP,DBPINDXAGH,DBPPCTAGH,DBPZAGH,ABPM_DATE,ABPMSUCCESS,SHYPAGH,DHYPAGH),test)
 
 # this was compared with age from pierce et al and correlates well, but not perfectly
 # note: age from pierce is in integers, not decimals
@@ -114,13 +76,25 @@ test$age<-(test$BSDATE-test$DOB)+test$DB_DATE
 # gender: since some values of MALE1FE0 are missing, will solve missing values by taking the mean of MALE1FE0 for each case (no change in gender over time)
 test<-test %>% group_by(CASEID) %>% mutate(male1fe0=mean(MALE1FE0, na.rm=TRUE))
 
-
 #add ckidfull [the best estimated gfr for research based on Schwartz and Schneider 2012]
-test<-test %>% mutate(term1=((AVHEIGHT/100)/SCR)^0.456)
-test<-test %>% mutate(term2=(1.8/CYC_DB)^0.418)
-test<-test%>% mutate(term3=(30/BUN)^0.079)
-test<-test %>% mutate(term4=((AVHEIGHT/100)/1.4)^0.179)
-test<-test %>% mutate(ckidfull=39.8*term1*term2*term3*term4*if_else(male1fe0==1,1.076,1))
+# function below calculates gfr based on full ckid equation if all data available, otherwise returns NA
+# if optional switch permissive is set, will provide alternative bedside schwartz gfr in case where full ckidgfr is not available
+gfr<-function(height,cr,cystatin,bun,gender, permissive=NULL) {
+  if (anyNA(c(height,cr,cystatin,bun,gender))) {
+    if (!is.null(permissive)){
+    if (anyNA(c(height,cr))) return(NA)
+    return (((height/100)*0.413)/cr)
+} else return (NA)}
+  term1=((height/100)/cr)^0.456
+  term2=(1.8/cystatin)^0.418
+  term3=(30/bun)^0.079
+  term4=((height/100)/1.4)^0.179
+  gfr<-39.8*term1*term2*term3*term4*ifelse(gender==1,1.076,1)
+  return(gfr)
+}
+# gfr will be based on ckidfull equation if the data is available, otherwise bedside schartz equation is used
+test$gfr<-mapply(gfr,test$AVHEIGHT,test$SCR,test$CYC_DB,test$BUN,test$male1fe0, permissive=TRUE)
+test$gfr[which(is.na(test$gfr))]<-test$BEDGFR[which(is.na(test$gfr))]
 
 # add column for urine protein:creatinine ratio based on RLURPROT and RLURCREA
 # add column for percentage of total urine protein that is albumin (Ualb_pct)
@@ -128,7 +102,7 @@ test<-test %>% mutate(Upc=RLURPROT/RLURCREA)
 test<-test %>% mutate(Ualb_pct=RLURMALB/RLURPROT)
 
 # add a column for CKD stage using ckidfull
-test$CKD_stage <- cut(test$ckidfull, 
+test$CKD_stage <- cut(test$gfr, 
                       breaks = c(Inf, 90, 60, 30, 15, -Inf), 
                       labels=c(1:5),ordered_result=TRUE, 
                       right = T)
@@ -136,31 +110,51 @@ test$CKD_stage <- cut(test$ckidfull,
 # create categories for proteinuria based on cutoffs noted
 test$Upc.factor<-cut(test$Upc,breaks=c(-Inf,0.5,1,2,Inf),labels=c("normal","mild","moderate","severe"),ordered_result = T,right=F)
 
-# organize medication data
+# loads the correct BP medication names into BP_medlist
+# and corrects BP medication names for brand names and misspellings
+# corrected names are assigned a new variable called med.corrected
+# display information about timing of echocardiogram data, grouped by visits
+# note: BP_medlist will display the misspelled/brand names of BP meds, frequency at visit 10?, and corrected names
+# categorize the BP meds into groups based on BP_medgroups.csv
+load("BP_medlist.RData")
+BP_medgroups <- read.csv("BP_medgroups.csv")
+medsum_full$med.corrected<-BP_medlist$Corrected.Name[match(medsum_full$MSMEDICA,BP_medlist$Var1)]
+medsum_full$BPmedgroup<-BP_medgroups$bp_group[match(medsum_full$med.corrected,BP_medgroups$x)]
+# combine split dosing medications (eg, some patients taking different doses of same medication at different times of day, eg, labetalol)
+medsum_full<-medsum_full %>% group_by(CASEID,VISIT,MSVISDAT, BPmedgroup,med.corrected) %>% summarise_at(vars(DLYDOSE,DLYFREQ,MSMISS7D), sum) %>% ungroup
 
-#old: medsum_full.2<- medsum_full.2 %>% group_by(CASEID,VISIT,MSVISDAT,med.corrected, DLYFREQ,BPmedgroup,n_agents) %>% summarise_at(vars(DLYDOSE),sum)
-# old: medsum_full.2<- medsum_full.2 %>% group_by(CASEID,VISIT,MSVISDAT,med.corrected, n_agents,BPmedgroup,DLYFREQ) %>% summarise_at(vars(DLYDOSE),sum) %>% ungroup() %>% nest(c(6:8), .key="rx_info")
-# old version: medsum_full.3<-dcast(medsum_full.2,CASEID+VISIT+MSVISDAT+DLYFREQ+BPmedgroup+n_agents~med.corrected, value.var="DLYDOSE")
-#old: medsum_full.4<-medsum_full.3 %>% group_by(CASEID,VISIT) %>% summarise_at(c(6:57),mean, na.rm=TRUE)
-# old: calculate mg/kg for each drug
-#test<-test %>% mutate_at(.vars=c(5:55),funs(mg_kg=if (!is.null(.[[]])) unlist(.)[3]/AVWEIGHT else 0))
+# determine compliance as percent of doses taken, based on reported missed doses per week and daily frequency of medication
+medcompliance<-function(miss7d,dlyfreq) {
+  if (miss7d<0) miss7d<-0
+  if (dlyfreq<0) dlyfreq<-NA
+  return((dlyfreq*7-miss7d)/(dlyfreq*7))
+}
+medsum_full$compliance<-mapply(medcompliance,medsum_full$MSMISS7D,medsum_full$DLYFREQ)
+medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>%  mutate(mean_compliance=mean(compliance,na.rm=TRUE)) %>% ungroup
 
-# this line generates columns for std_dose (dose per kg, with AVWEIGHT from growth data), corrects
+# more organizing of medication data
+# these lines generatet columns for std_dose (dose per kg, with AVWEIGHT from growth data), corrects
 # for split dosing (eg, labetalol), and nests drug data into a 5 column list called rx_info
 # the drug dose index is the 5th column, and uses gfr based on ckidfull equation if possible, otherwise bedside GFR is used
 source("DDI.R")
-medsum_full.2<-medsum_full
-medsum_full.3<-full_join(test %>% select(CASEID,VISIT,AVWEIGHT,ckidfull,BEDGFR),medsum_full.2)
-medsum_full.3<-medsum_full.3 %>% group_by(CASEID,VISIT,MSVISDAT,ckidfull,AVWEIGHT,med.corrected,n_agents,BPmedgroup,DLYFREQ,BEDGFR) %>% filter(DLYDOSE>0) %>% summarise_at(vars(DLYDOSE), sum) %>% mutate(std_dose=DLYDOSE/AVWEIGHT)
-medsum_full.3<- medsum_full.3 %>% mutate(DDI=DDI(DLYDOSE,med.corrected,AVWEIGHT,ifelse(is.na(ckidfull),BEDGFR,ckidfull)))
-medsum_full.4<-medsum_full.3 %>% ungroup %>% nest(-c(1:7,10), .key="rx_info") %>% select(-c(4:5))
-medsum_full.4<-dcast(medsum_full.4,CASEID+VISIT+MSVISDAT+n_agents~med.corrected, value.var="rx_info")
+medsum_full<-full_join(test %>% select(CASEID,VISIT,AVWEIGHT,gfr),medsum_full)
+# function to calculate standard dose (in mg/kg)
+std_dose<-function(dlydose,weight){
+  if (anyNA(c(dlydose,weight))) return (NA)
+  if(dlydose>0 & weight>0) {
+    return(dlydose/weight)
+  } else return(NA)
+}
+medsum_full$std_dose<-mapply(std_dose,medsum_full$DLYDOSE,medsum_full$AVWEIGHT)
+medsum_full$DDI<-mapply(DDI,medsum_full$DLYDOSE, medsum_full$med.corrected,medsum_full$AVWEIGHT, medsum_full$gfr)
+medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(n_agents=n_distinct(med.corrected, na.rm=TRUE))
+medsum_full<-medsum_full %>% ungroup %>% nest(c(6,8,9,11,13,14), .key="rx_info") %>% select(-c(3,4,7))
+medsum_full<-dcast(medsum_full,CASEID+VISIT+MSVISDAT+n_agents+mean_compliance~med.corrected, value.var="rx_info")
 
+# save(medsum_full, file='medsum_full.1.RData')
+load(file='medsum_full.1.RData')
 
-# save(medsum_full.4, file='medsum_full4.RData')
-load(file='medsum_full4.RData')
-
-test<-full_join(medsum_full.4,test)
+test<-full_join(medsum_full,test)
 
 # replace all NULL values of drugs with a tibble containing NA's using change_null_to_list function above
 # note: the line below takes approx 5 min to complete, so will save results to medsum_full4.RData file and read it into memory
@@ -169,15 +163,24 @@ change_null_to_list <- function(x) {
   # If x is a data frame, do nothing and return x
   # Otherwise, return a data frame with 1 row of NAs
   if (!is.null(x)) {return(x)}
-  else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA),DDI=as.numeric(NA)))))}
+  else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYDOSE=as.numeric(NA), DLYFREQ=as.numeric(NA),compliance=as.numeric(NA),std_dose=as.numeric(NA),DDI=as.numeric(NA)))))}
 }
-# for (i in 5:45) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
+# for (i in 8:57) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
+duplicates<-test %>% group_by(CASEID,VISIT) %>% mutate(duplicates=n_distinct(MSVISDAT)) %>% filter(duplicates>1)
+test<-test %>% group_by(CASEID,VISIT) %>% mutate(duplicates=n_distinct(MSVISDAT)) %>% filter(duplicates==1)
 
-# replace all missing n_agents values to 0 (patients not taking any antihypertensives)
-test$n_agents[is.na(test$n_agents)]<-0
-
-#add LVMI/BSA variable
-#test<- test %>% mutate(LVMI_BSA=LVMI/BSA)
+# cardio data organization
+# overview of data...
+# display the time differences between ABPM and casual BP measurement dates
+# cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=ABPM_DATE-DB_DATE) %>% group_by(VISIT) %>% summarise_at(vars(date_dif),funs(mean_dif_days=365*mean(.,na.rm=TRUE),max_dif_yr=max, sd_dif_yr=sd(.,na.rm=TRUE)))
+# display the number of observations where the difference between the date of visit and the ABPM date is > 60 days (=TRUE)
+# consider excluding these observations since the BP status is less reliable
+# cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=abs(ABPM_DATE-DB_DATE)) %>% group_by(VISIT) %>% mutate(big_dif=date_dif>60/365) %>% select(big_dif) %>% table %>% addmargins
+# display the counts for all the BP statuses grouped by visit
+# patients with BP status -1 occured when casual BP was not classified (either no BP entered at that visit, or BP entered, but no percentile/z-score)
+# cardio %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus !=-1) %>% select(BPstatus) %>% table() %>% addmargins
+# display information about timing of ABPM data, grouped by visits
+# cardio%>% filter(ABPMSUCCESS==1) %>% group_by(VISIT) %>% summarise_at(vars(ABPM_DATE), funs(date_mean=mean,date_min=min,date_max=max,n_pts=length))
 
 # add columns for new 2017 AAP BP percentiles and z-scores (this takes about 2 minutes to calculate)
 source('BPz/bpzv2.R')
@@ -191,14 +194,37 @@ source('BPstatus2017.R')
 source('bpp4.R')
 # classification of BP status based on 4th report and 2017 guidelines
 test$BPstatus2017<-mapply(BPstatus2017,test$SBP,test$DBP,test$age,test$male1fe0,test$AVHEIGHT)
-test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$male1fe0,test$HTPCTAG, test$SBPPCTAGH,test$DBPPCTAGH)
+# fill in missing height percentiles to reduce number of missing BP status
+missing_htpct<-which(is.na(test$HTPCTAG) & !is.na(test$AVHEIGHT))
+test$HTPCTAG[missing_htpct]<- mapply(htz,test$AVHEIGHT[missing_htpct], test$age[missing_htpct], test$male1fe0[missing_htpct],p=T)
+test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$male1fe0,test$HTPCTAG,test$SBPPCTAGH,test$DBPPCTAGH)
+
+# cardio data organization
+# analysis of BP status
+# based on 2009 AHA consensus guidelines (old)
+# BP status is coded as a variable called BPstatus in cardio
+# 0 = normal
+# 1 = White coat hypertension (WCH)
+# 2 = masked hyeprtension (MH)
+# 3 = ambulatory hypertension (AH)
+
+# cardio$BPstatus=-1
+# cardio$BPstatus[cardio$WKSYSINDX<0.95 & cardio$WKDIAINDX<0.95 & cardio$SLSYSINDX<0.95 & cardio$SLDIAINDX<0.95 & cardio$WKSYSLOAD<25 & cardio$WKDIALOAD<25 & cardio$SLSYSLOAD<25 & cardio$SLDIALOAD<25 & cardio$SBPPCTAGH<95 & cardio$DBPPCTAGH<95]<-0
+# cardio$BPstatus[(cardio$WKSYSINDX<0.95 & cardio$WKDIAINDX<0.95 & cardio$SLSYSINDX<0.95 & cardio$SLDIAINDX<0.95 & cardio$WKSYSLOAD<25 & cardio$WKDIALOAD<25 & cardio$SLSYSLOAD<25 & cardio$SLDIALOAD<25) & (cardio$SBPPCTAGH>=95 | cardio$DBPPCTAGH>=95)]<-1
+# cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSINDX>=0.95 | cardio$SLDIAINDX>=0.95 | cardio$WKSYSLOAD>=25 | cardio$WKDIALOAD>=25 | cardio$SLSYSLOAD>=25 | cardio$SLDIALOAD>=25) & (cardio$SBPPCTAGH<95 & cardio$DBPPCTAGH<95)]<-2
+# cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSINDX>=0.95 | cardio$SLDIAINDX>=0.95 | cardio$WKSYSLOAD>=25 | cardio$WKDIALOAD>=25 | cardio$SLSYSLOAD>=25 | cardio$SLDIALOAD>=25) & (cardio$SBPPCTAGH>=95 | cardio$DBPPCTAGH>=95)]<-3
+source('bpclass.R')
+cardio<-left_join(cardio,test %>% select(CASEID,VISIT,SBPPCTAGH2017,DBPPCTAGH2017))
+cardio<-cardio %>% filter(ABPMSUCCESS==1) %>% rowwise()%>% mutate(BPclass= bpclass(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017,WGSBP90LIMIT,WGDBP90LIMIT,WKSYSMEAN,SLSYSMEAN,WKDIAMEAN,SLDIAMEAN))
+test<-full_join(cardio %>% select(CASEID,VISIT,BPclass),test)
 
 # to save time, use this as starting point...
-#save(test, file="test.RData")
+# duplicates<-test %>% group_by(CASEID,VISIT) %>% mutate(duplicates=n_distinct(MSVISDAT)) %>% filter(duplicates>1)
+#save(test,duplicates, file="test.RData")
 load(file="test.RData")
 
 # table to demonstrate differences in classification of patients during visit 20
-test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(useNA = "always") %>% addmargins()
+test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(.,useNA = "always") %>% addmargins()
 
 # data overview found in file "overview of data"
 # this is a test to see how changes as handled in git
@@ -208,9 +234,9 @@ test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(useNA 
 n_agents_20<-test %>% filter(VISIT==20)
 # show the table
 # excludes patients whose BP status unknown (either clinic BP or ABPM study results are missing)
-table(n_agents_20$n_agents,n_agents_20$BPstatus, exclude = c(-1,NA)) %>% addmargins()
+n_agents_20 %>% select(n_agents,BPclass) %>% table(., useNA = 'always') %>% addmargins()
 # balloonplot
-dt <- table(n_agents_20$n_agents,n_agents_20$BPstatus, exclude = c(-1,NA))
+dt <- table(n_agents_20$n_agents,n_agents_20$BPclass, exclude = c(-1,NA))
 balloonplot(t(dt), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
 
 # chi-squared test shows highly significant p-value of 8.4E-5
@@ -224,7 +250,7 @@ corrplot(chisq$residuals, is.cor = FALSE)
 #table1
 # visit20_BPstatus_n_agents.csv: BP status (columns) by number of agents (rows) in VISIT 20 only
 # note: includes those with unknown BP status (-1), due to unknown clinic BP percentile, or unsuccessfull ABPM study
-table1<-test %>% filter(VISIT==20) %>% select(n_agents,BPstatus) %>% table() %>% addmargins()
+table1<-test %>% filter(VISIT==20) %>% select(n_agents,BPclass) %>% table() %>% addmargins()
 write.table(table1,row.names=T, col.names=NA, "visit20_BPstatus_n_agents.csv")
 table1
 
@@ -234,14 +260,14 @@ table2<-test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table() %>%
 write.table(table2, row.names=T, col.names=NA,"n_agents_visit.csv")
 table2
 
-# BPstatus_visit.csv: BPstatus (columns) by visit (rows, only even visits when ABPM obtained)
-table3<-test %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus!=-1) %>% select(BPstatus) %>% table() %>% addmargins()
+# BPstatus_visit.csv: BPclass (columns) by visit (rows, only even visits when ABPM obtained)
+table3<-test %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPclass!=-1) %>% select(BPclass) %>% table() %>% addmargins()
 write.table(table3,row.names=T, col.names = NA, "BPstatus_visit.csv")
 table3
 
 # Counts of patients on each antihypertensive medication grouped by visit and sorted (descending)
 unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=n_rx~addNA(factor(med.corrected))+VISIT)
-table4<-unsorted[sort(unsorted[,1], decreasing=T,index.return=T)$ix,]
+table4<-unsorted[sort(unsorted[,1], decreasing=T,index.return=T)$ix,] %>% addmargins()
 write.table(table4,row.names=T, col.names=NA,"visit_medcounts.csv")
 table4
 
@@ -253,20 +279,23 @@ table(is.na(test$SBP)+is.na(test$DBP))
 
 # parse drug info stored in test as separate variables for analysis
 source("get_drug_info.R")
-drugname<-names(test)[5:45]
-temp <- paste(drugname[1:41], "<- get_drug_info(test,'",drugname,"', c(1:5))", sep="")
+drugname<-names(test)[8:57]
+# remove medications with combinations
+drugname<-drugname[!1:length(drugname) %in% c(3,5,6,11,20,26,33)]
+test.20<-test %>% filter(VISIT==20)
+temp <- paste(drugname[1:43], "<- get_drug_info(test.20,'",drugname,"', c(1:6))", sep="")
 eval(parse(text=temp))
 
-temp.1<-paste("test$",drugname[1:41],"_DDI<-",drugname[1:41],"$DDI", sep="")
-temp.2<-paste("test$",drugname[1:41],"_std_dose<-",drugname[1:41],"$std_dose", sep="")
+temp.1<-paste("test.20$",drugname[1:43],"_DDI<-",drugname[1:43],"$DDI", sep="")
+temp.2<-paste("test.20$",drugname[1:43],"_std_dose<-",drugname[1:43],"$std_dose", sep="")
 eval(parse(text=temp.1))
 eval(parse(text=temp.2))
 
 # draw histograms of DDI for each drug
-temp<-paste("if (!all(is.na(",drugname[1:41],"$DDI))) hist(",drugname[1:41],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:41],"\"))", sep="")
-par(mfrow=c(6,4))
+temp<-paste("if (!all(is.na(",drugname[1:43],"$DDI))) hist(",drugname[1:43],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:43],"\"))", sep="")
+par(mfrow=c(6,7))
 par(mar=c(2,2,1,1))
-eval(parse(text=temp))
+eval(parse(text=temp[1:42]))
 
 # comparing patients based on DDI
 temp_DDI<-test%>% select(ends_with('_DDI')) %>% as.matrix %>% apply(.,1,sort,decreasing=T,na.last=T)

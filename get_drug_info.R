@@ -8,7 +8,7 @@
 get_drug_info <-function(x,rx,params) {
   if (typeof(rx)=="character") rx<-which(names(x)==toupper(rx))
   nrows<-dim(x)[1]
-  out<-matrix(unlist(x[,rx]),nrow=nrows,ncol=length(params),byrow=TRUE,dimnames=(list(NULL,c("BPmedgroup","DLYFREQ","DLYDOSE","std_dose","DDI"))))
+  out<-matrix(unlist(x[,rx]),nrow=nrows,ncol=length(params),byrow=TRUE,dimnames=(list(NULL,c("BPmedgroup","DLYDOSE","DLYFREQ", "compliance","std_dose","DDI"))))
   return (as_tibble(out) %>% select(params))
   # return(unlist(lapply(x[,rx],'[[',param)))}
 

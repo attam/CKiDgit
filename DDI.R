@@ -17,7 +17,7 @@ dose_ref <- read_csv("dosing_ref_antiHTN.csv")
 
 DDI <-function(dose, drug,weight,gfr) {
   drug<-toupper(drug)
-  if (is.na(match(drug[1],dose_ref$Drug))) return(NA)
+  if (dose<=0|is.na(match(drug[1],dose_ref$Drug))) return(NA)
   dose_ref<-dose_ref %>% filter(Drug==drug)
   
   # adjustment for decreased GFR
