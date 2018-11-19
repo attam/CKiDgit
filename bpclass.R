@@ -16,18 +16,20 @@
 # wake and sleep systolic and diastolic means
 # note: mean indices and loads are calculated using wake and sleep values of each
 bpclass<-function(wksi,wkdi,slsi,sldi,wksl,wkdl,slsl,sldl,sbp,dbp,sbpp,dbpp,s90,d90,wksysmn,slsysmn,wkdiamn,sldiamn) {
+  # if all indices, loads, means and percentiles are missing, return NA, otherwise use the maximum index, load, mean and percentile, respectively
   maxindex<-ifelse(all(is.na(c(wksi,wkdi,slsi,sldi))),NA,max(wksi,wkdi,slsi,sldi, na.rm=TRUE))
   maxload<-ifelse(all(is.na(c(wksl,wkdl,slsl,sldl))),NA,max(wksl,wkdl,slsl,sldl, na.rm=TRUE))
   maxsysmean<-ifelse(all(is.na(c(wksysmn,slsysmn))),NA,max(wksysmn,slsysmn,na.rm=TRUE))
   maxdiamean<-ifelse(all(is.na(c(wkdiamn,sldiamn))),NA,max(wkdiamn,sldiamn,na.rm=TRUE))
   maxbpp<-ifelse(all(is.na(c(sbpp,dbpp))),NA, max(sbpp,dbpp, na.rm=TRUE))
+  # if all maximums are missing, return NA
   if (all(is.na(c(maxindex,maxload,maxbpp)))) return (NA)
-  if (all(maxbpp<90,maxsysmean<s90,maxdiamean<d90,maxload<25,na.rm=TRUE)) return(0) #NL
-  if (all(maxbpp>95,maxindex>1 , maxload>50, na.rm=TRUE)) return(5) #SAH
-  if (all(maxbpp>95,maxindex<1,maxload<25, na.rm=TRUE)) return(1) # WCH
-  if (all(maxbpp<95,maxindex>1 | between(maxload,25,50),na.rm=TRUE)) return(3) # MH
-  if (all(maxbpp>95,maxindex>1 , between(maxload,25,50),na.rm=TRUE)) return(4) # AH
-  if (all((maxbpp>=90 | sbp>120 | dbp>80),maxindex<1,maxload>=25, na.rm=TRUE)) return(2) #pre-HTN
-  if (all(maxload>25, maxsysmean<s90,maxdiamean<d90, (maxbpp>=95 | maxbpp<90),na.rm=TRUE)) return(3.5) # unclassified (no consensus on management)
+  if (all(maxbpp<90,maxsysmean<s90,maxdiamean<d90,maxload<25)) return(0) #NL
+  if (all(maxbpp>95,maxindex>1 , maxload>50)) return(5) #SAH
+  if (all(maxbpp>95,maxindex<1,maxload<25)) return(1) # WCH
+  if (all(maxbpp<95,maxindex>1, between(maxload,25,50))) return(3) # MH
+  if (all(maxbpp>95,maxindex>1 , between(maxload,25,50))) return(4) # AH
+  if (all((maxbpp>=90 | sbp>120 | dbp>80),maxindex<1,maxload>=25)) return(2) #pre-HTN
+  if (all(maxload>25, maxsysmean<s90,maxdiamean<d90, (maxbpp>=95 | maxbpp<90))) return(3.5) # unclassified (no consensus on management)
   return (NA)
 }

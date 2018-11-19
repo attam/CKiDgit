@@ -74,7 +74,7 @@ test<-full_join(cardio %>% select(CASEID,VISIT,DB_DATE,SBP,SBPINDXAGH,SBPPCTAGH,
 test$age<-(test$BSDATE-test$DOB)+test$DB_DATE
 
 # gender: since some values of MALE1FE0 are missing, will solve missing values by taking the mean of MALE1FE0 for each case (no change in gender over time)
-test<-test %>% group_by(CASEID) %>% mutate(male1fe0=mean(MALE1FE0, na.rm=TRUE))
+test<-test %>% group_by(CASEID) %>% mutate(MALE1FE0=mean(MALE1FE0, na.rm=TRUE))
 
 #add ckidfull [the best estimated gfr for research based on Schwartz and Schneider 2012]
 # function below calculates gfr based on full ckid equation if all data available, otherwise returns NA
@@ -93,7 +93,7 @@ gfr<-function(height,cr,cystatin,bun,gender, permissive=NULL) {
   return(gfr)
 }
 # gfr will be based on ckidfull equation if the data is available, otherwise bedside schartz equation is used
-test$gfr<-mapply(gfr,test$AVHEIGHT,test$SCR,test$CYC_DB,test$BUN,test$male1fe0, permissive=TRUE)
+test$gfr<-mapply(gfr,test$AVHEIGHT,test$SCR,test$CYC_DB,test$BUN,test$MALE1FE0, permissive=TRUE)
 test$gfr[which(is.na(test$gfr))]<-test$BEDGFR[which(is.na(test$gfr))]
 
 # add column for urine protein:creatinine ratio based on RLURPROT and RLURCREA
@@ -120,6 +120,8 @@ load("BP_medlist.RData")
 BP_medgroups <- read.csv("BP_medgroups.csv")
 medsum_full$med.corrected<-BP_medlist$Corrected.Name[match(medsum_full$MSMEDICA,BP_medlist$Var1)]
 medsum_full$BPmedgroup<-BP_medgroups$bp_group[match(medsum_full$med.corrected,BP_medgroups$x)]
+# remove all unintelligible medications from the data (may be viewed using BP_medlist[which(BP_medlist$Corrected.Name=="*invalid*"),c(2:3)])
+medsum_full<-medsum_full %>% filter(med.corrected!="*invalid*")
 # combine split dosing medications (eg, some patients taking different doses of same medication at different times of day, eg, labetalol)
 medsum_full<-medsum_full %>% group_by(CASEID,VISIT,MSVISDAT, BPmedgroup,med.corrected) %>% summarise_at(vars(DLYDOSE,DLYFREQ,MSMISS7D), sum) %>% ungroup
 
@@ -147,6 +149,16 @@ std_dose<-function(dlydose,weight){
 }
 medsum_full$std_dose<-mapply(std_dose,medsum_full$DLYDOSE,medsum_full$AVWEIGHT)
 medsum_full$DDI<-mapply(DDI,medsum_full$DLYDOSE, medsum_full$med.corrected,medsum_full$AVWEIGHT, medsum_full$gfr)
+# identify duplicates (cases with visit codes that have coresponding visit dates that are not the same) and eliminate all the corresponding medication data
+# justifications 1) unable to determine whether duplicate visits represent 'addition' of medications or 'switching' between meds
+# 2) some cases have same visit code and corresponding visit dates separated in time by up to 4.28 years (obviously an error in recording data)
+medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(ndup=n_distinct(MSVISDAT), visitmean=mean(unique(MSVISDAT,na.rm=TRUE)), visitsd=sd(unique(MSVISDAT,na.rm=TRUE)))
+medsum_full %>% group_by(VISIT) %>% filter(ndup>1) %>% summarise(npts.dup.visit=n_distinct(CASEID)) # show how many patients at each visit are duplicated
+medsum_full %>% group_by(VISIT) %>% arrange(desc(visitsd)) # show the extreme values of visit date sd
+medsum_full<-medsum_full %>%filter(ndup==1) # remove all duplicates from the data
+
+
+
 medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(n_agents=n_distinct(med.corrected, na.rm=TRUE))
 medsum_full<-medsum_full %>% ungroup %>% nest(c(6,8,9,11,13,14), .key="rx_info") %>% select(-c(3,4,7))
 medsum_full<-dcast(medsum_full,CASEID+VISIT+MSVISDAT+n_agents+mean_compliance~med.corrected, value.var="rx_info")
@@ -163,11 +175,10 @@ change_null_to_list <- function(x) {
   # If x is a data frame, do nothing and return x
   # Otherwise, return a data frame with 1 row of NAs
   if (!is.null(x)) {return(x)}
-  else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYDOSE=as.numeric(NA), DLYFREQ=as.numeric(NA),compliance=as.numeric(NA),std_dose=as.numeric(NA),DDI=as.numeric(NA)))))}
+  else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA),DDI=as.numeric(NA),compliance=as.numeric(NA)))))}
 }
-# for (i in 8:57) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
-duplicates<-test %>% group_by(CASEID,VISIT) %>% mutate(duplicates=n_distinct(MSVISDAT)) %>% filter(duplicates>1)
-test<-test %>% group_by(CASEID,VISIT) %>% mutate(duplicates=n_distinct(MSVISDAT)) %>% filter(duplicates==1)
+
+# for (i in 6:55) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
 
 # cardio data organization
 # overview of data...
@@ -184,20 +195,20 @@ test<-test %>% group_by(CASEID,VISIT) %>% mutate(duplicates=n_distinct(MSVISDAT)
 
 # add columns for new 2017 AAP BP percentiles and z-scores (this takes about 2 minutes to calculate)
 source('BPz/bpzv2.R')
-test$SBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,1,test$SBP, z=F)
-test$DBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,2,test$DBP, z=F)
-test$SBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,1,test$SBP, z=T)
-test$DBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$male1fe0,2,test$DBP, z=T)
+test$SBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,1,test$SBP, z=F)
+test$DBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,2,test$DBP, z=F)
+test$SBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,1,test$SBP, z=T)
+test$DBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,2,test$DBP, z=T)
 
 source('BPstatus4th.R')
 source('BPstatus2017.R')
 source('bpp4.R')
 # classification of BP status based on 4th report and 2017 guidelines
-test$BPstatus2017<-mapply(BPstatus2017,test$SBP,test$DBP,test$age,test$male1fe0,test$AVHEIGHT)
+test$BPstatus2017<-mapply(BPstatus2017,test$SBP,test$DBP,test$age,test$MALE1FE0,test$AVHEIGHT)
 # fill in missing height percentiles to reduce number of missing BP status
 missing_htpct<-which(is.na(test$HTPCTAG) & !is.na(test$AVHEIGHT))
-test$HTPCTAG[missing_htpct]<- mapply(htz,test$AVHEIGHT[missing_htpct], test$age[missing_htpct], test$male1fe0[missing_htpct],p=T)
-test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$male1fe0,test$HTPCTAG,test$SBPPCTAGH,test$DBPPCTAGH)
+test$HTPCTAG[missing_htpct]<- mapply(htz,test$AVHEIGHT[missing_htpct], test$age[missing_htpct], test$MALE1FE0[missing_htpct],p=T)
+test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$MALE1FE0,test$HTPCTAG,test$SBPPCTAGH,test$DBPPCTAGH)
 
 # cardio data organization
 # analysis of BP status
@@ -224,7 +235,9 @@ test<-full_join(cardio %>% select(CASEID,VISIT,BPclass),test)
 load(file="test.RData")
 
 # table to demonstrate differences in classification of patients during visit 20
-test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(.,useNA = "always") %>% addmargins()
+BPstatus_comparison<-test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(.,useNA = "always") %>% addmargins()
+write.table(BPstatus_comparison,row.names=T, col.names=NA,"BPstatus_comparison.csv")
+BPstatus_comparison
 
 # data overview found in file "overview of data"
 # this is a test to see how changes as handled in git
@@ -280,22 +293,19 @@ table(is.na(test$SBP)+is.na(test$DBP))
 # parse drug info stored in test as separate variables for analysis
 source("get_drug_info.R")
 drugname<-names(test)[8:57]
-# remove medications with combinations
-drugname<-drugname[!1:length(drugname) %in% c(3,5,6,11,20,26,33)]
-test.20<-test %>% filter(VISIT==20)
-temp <- paste(drugname[1:43], "<- get_drug_info(test.20,'",drugname,"', c(1:6))", sep="")
+temp <- paste(drugname[1:49], "<- get_drug_info(test,'",drugname,"', c(1:6))", sep="")
 eval(parse(text=temp))
 
-temp.1<-paste("test.20$",drugname[1:43],"_DDI<-",drugname[1:43],"$DDI", sep="")
-temp.2<-paste("test.20$",drugname[1:43],"_std_dose<-",drugname[1:43],"$std_dose", sep="")
+temp.1<-paste("test$",drugname[1:41],"_DDI<-",drugname[1:41],"$DDI", sep="")
+temp.2<-paste("test$",drugname[1:41],"_std_dose<-",drugname[1:41],"$std_dose", sep="")
 eval(parse(text=temp.1))
 eval(parse(text=temp.2))
 
 # draw histograms of DDI for each drug
-temp<-paste("if (!all(is.na(",drugname[1:43],"$DDI))) hist(",drugname[1:43],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:43],"\"))", sep="")
-par(mfrow=c(6,7))
+temp<-paste("if (!all(is.na(",drugname[1:41],"$DDI))) hist(",drugname[1:41],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:41],"\"))", sep="")
+par(mfrow=c(6,4))
 par(mar=c(2,2,1,1))
-eval(parse(text=temp[1:42]))
+eval(parse(text=temp))
 
 # comparing patients based on DDI
 temp_DDI<-test%>% select(ends_with('_DDI')) %>% as.matrix %>% apply(.,1,sort,decreasing=T,na.last=T)
