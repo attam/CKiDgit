@@ -1,0 +1,19 @@
+Code	BP class
+0	Normal
+1	White coat hypertension (WCH)
+2	Prehypertension (PH)
+3	Masked hypertension (MH)
+4	Ambulatory hypertension (AH)
+5	Severe ambulatory hypertension (SAH)
+2.1	Prehypertension variant 1
+2.2	Prehypertension variant 2
+2.3	Prehypertension variant 3
+3.1	*Masked hypertension variant 1
+3.2	Masked hypertension variant 2
+3.3	Masked hypertension variant 3
+3.4	Masked hypertension variant 4
+3.5	Masked hypertension variant 5
+4.1	*Ambulatory hypertension variant 1
+4.2	Ambulatory hypertension variant 2
+4.3	Ambulatory hypertension variant 2
+	(* = defined as unclassified by UpToDate/AHA 2014)

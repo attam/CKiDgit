@@ -178,7 +178,7 @@ change_null_to_list <- function(x) {
   else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA),DDI=as.numeric(NA),compliance=as.numeric(NA)))))}
 }
 
-# for (i in 6:55) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
+# for (i in 9:58) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
 
 # cardio data organization
 # overview of data...
@@ -204,11 +204,17 @@ source('BPstatus4th.R')
 source('BPstatus2017.R')
 source('bpp4.R')
 # classification of BP status based on 4th report and 2017 guidelines
+# note: BP status is NA when BP was unavailable
 test$BPstatus2017<-mapply(BPstatus2017,test$SBP,test$DBP,test$age,test$MALE1FE0,test$AVHEIGHT)
 # fill in missing height percentiles to reduce number of missing BP status
 missing_htpct<-which(is.na(test$HTPCTAG) & !is.na(test$AVHEIGHT))
 test$HTPCTAG[missing_htpct]<- mapply(htz,test$AVHEIGHT[missing_htpct], test$age[missing_htpct], test$MALE1FE0[missing_htpct],p=T)
 test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$MALE1FE0,test$HTPCTAG,test$SBPPCTAGH,test$DBPPCTAGH)
+
+# save(test,file="test.RData")
+load(file="test.RData")
+# stacked barplot of BP status (in proportions) grouped by visit
+test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% table(useNA = 'always') %>% prop.table(margin=1)
 
 # cardio data organization
 # analysis of BP status
@@ -225,10 +231,17 @@ test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$MALE1FE0,te
 # cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSINDX>=0.95 | cardio$SLDIAINDX>=0.95 | cardio$WKSYSLOAD>=25 | cardio$WKDIALOAD>=25 | cardio$SLSYSLOAD>=25 | cardio$SLDIALOAD>=25) & (cardio$SBPPCTAGH<95 & cardio$DBPPCTAGH<95)]<-2
 # cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSINDX>=0.95 | cardio$SLDIAINDX>=0.95 | cardio$WKSYSLOAD>=25 | cardio$WKDIALOAD>=25 | cardio$SLSYSLOAD>=25 | cardio$SLDIALOAD>=25) & (cardio$SBPPCTAGH>=95 | cardio$DBPPCTAGH>=95)]<-3
 source('bpclass.R')
-cardio<-left_join(cardio,test %>% select(CASEID,VISIT,SBPPCTAGH2017,DBPPCTAGH2017))
-cardio<-cardio %>% filter(ABPMSUCCESS==1) %>% rowwise()%>% mutate(BPclass= bpclass(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017,WGSBP90LIMIT,WGDBP90LIMIT,WKSYSMEAN,SLSYSMEAN,WKDIAMEAN,SLDIAMEAN))
-test<-full_join(cardio %>% select(CASEID,VISIT,BPclass),test)
-
+cardio<-cardio %>%rowwise()%>% mutate(noctHTN=sum(SYSPCTDIPPING<10,DIAPCTDIPPING<10))
+cardio<-left_join(cardio,test %>% select(CASEID,VISIT,SBPPCTAGH2017,DBPPCTAGH2017, age,MALE1FE0,AVHEIGHT))
+cardio<-cardio %>% rowwise() %>% mutate(BPclass= bpclass(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017))
+test<-full_join(cardio %>% select(CASEID,VISIT,ABPMSUCCESS, BPclass,noctHTN),test)
+# combine BP class variants into larger groups using BP classification from 2014
+test$BPclass.factor<-cut(test$BPclass,0:6,right=FALSE, labels=c("NL","WCH","PH","MH","AH","SAH"),ordered_result = TRUE)
+# stacked barplot of BP class (in proportions) grouped by visit
+table.a<-test %>% filter(VISIT%%20==0)%>% group_by(VISIT) %>% select(BPclass.factor) %>% table(useNA = 'no') 
+table.a%>% plot(prop.table(margin=1)[,1], col=c("green","greenyellow","yellow","orange","orangered","red4"),main="Proportion of BP classes by visit", ylab="BP class (%)")
+# proportion table of nocturnal HTN by BP class grouped by visit
+table.b<-test %>% filter(VISIT%%20==0) %>% group_by(BPclass.factor) %>% select(noctHTN,VISIT) %>% table(useNA = 'no') %>% prop.table(margin=3)*100
 # to save time, use this as starting point...
 # duplicates<-test %>% group_by(CASEID,VISIT) %>% mutate(duplicates=n_distinct(MSVISDAT)) %>% filter(duplicates>1)
 #save(test,duplicates, file="test.RData")
@@ -247,9 +260,9 @@ BPstatus_comparison
 n_agents_20<-test %>% filter(VISIT==20)
 # show the table
 # excludes patients whose BP status unknown (either clinic BP or ABPM study results are missing)
-n_agents_20 %>% select(n_agents,BPclass) %>% table(., useNA = 'always') %>% addmargins()
+n_agents_20 %>% select(n_agents,BPclass.factor) %>% table(., useNA = 'no') %>% addmargins()
 # balloonplot
-dt <- table(n_agents_20$n_agents,n_agents_20$BPclass, exclude = c(-1,NA))
+dt <- table(n_agents_20$n_agents,n_agents_20$BPclass.factor, exclude = c(-1,NA))
 balloonplot(t(dt), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
 
 # chi-squared test shows highly significant p-value of 8.4E-5
@@ -263,20 +276,23 @@ corrplot(chisq$residuals, is.cor = FALSE)
 #table1
 # visit20_BPstatus_n_agents.csv: BP status (columns) by number of agents (rows) in VISIT 20 only
 # note: includes those with unknown BP status (-1), due to unknown clinic BP percentile, or unsuccessfull ABPM study
-table1<-test %>% filter(VISIT==20) %>% select(n_agents,BPclass) %>% table() %>% addmargins()
+table1<-test %>% filter(VISIT==20) %>% select(n_agents,BPclass.factor) %>% table() %>% addmargins()
 write.table(table1,row.names=T, col.names=NA, "visit20_BPstatus_n_agents.csv")
 table1
 
 # n_agents_visit.csv: n_agents(columns) by visit (rows)
 # note: includes those not taking any antihypertensive meds
-table2<-test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table() %>% addmargins()
+table2<-test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table()
 write.table(table2, row.names=T, col.names=NA,"n_agents_visit.csv")
 table2
+# proportion table version of table 2
+round(100*prop.table(table2,margin=1),1)
 
 # BPstatus_visit.csv: BPclass (columns) by visit (rows, only even visits when ABPM obtained)
-table3<-test %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPclass!=-1) %>% select(BPclass) %>% table() %>% addmargins()
+table3<-test %>% filter(VISIT%%20==0) %>% group_by(VISIT) %>% select(BPclass.factor) %>% table()
 write.table(table3,row.names=T, col.names = NA, "BPstatus_visit.csv")
 table3
+round(100*prop.table(table3,margin=1),1)
 
 # Counts of patients on each antihypertensive medication grouped by visit and sorted (descending)
 unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=n_rx~addNA(factor(med.corrected))+VISIT)
@@ -292,20 +308,23 @@ table(is.na(test$SBP)+is.na(test$DBP))
 
 # parse drug info stored in test as separate variables for analysis
 source("get_drug_info.R")
-drugname<-names(test)[8:57]
-temp <- paste(drugname[1:49], "<- get_drug_info(test,'",drugname,"', c(1:6))", sep="")
+drugname<-names(test)[9:58]
+drugname<-drugname[-c(3,5,6,11,20,26,33)]
+temp <- paste(drugname[1:43], "<- get_drug_info(test,'",drugname,"', c(1:6))", sep="")
 eval(parse(text=temp))
 
-temp.1<-paste("test$",drugname[1:41],"_DDI<-",drugname[1:41],"$DDI", sep="")
-temp.2<-paste("test$",drugname[1:41],"_std_dose<-",drugname[1:41],"$std_dose", sep="")
+temp.1<-paste("test$",drugname[1:43],"_DDI<-",drugname[1:41],"$DDI", sep="")
+temp.2<-paste("test$",drugname[1:43],"_std_dose<-",drugname[1:41],"$std_dose", sep="")
 eval(parse(text=temp.1))
 eval(parse(text=temp.2))
 
 # draw histograms of DDI for each drug
-temp<-paste("if (!all(is.na(",drugname[1:41],"$DDI))) hist(",drugname[1:41],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:41],"\"))", sep="")
+temp<-paste("if (!all(is.na(",drugname[1:43],"$DDI))) hist(",drugname[1:43],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:43],"\"))", sep="")
 par(mfrow=c(6,4))
 par(mar=c(2,2,1,1))
 eval(parse(text=temp))
 
 # comparing patients based on DDI
 temp_DDI<-test%>% select(ends_with('_DDI')) %>% as.matrix %>% apply(.,1,sort,decreasing=T,na.last=T)
+test$DDI_all<-as_tibble(t(temp_DDI))
+

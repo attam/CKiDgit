@@ -24,15 +24,18 @@ BPstatus2017<- function(sbp,dbp,age,gender,height) {
 #    print(c(sbp,dbp,age,height,gender))
     if (all(bpp<90,sbp<120,dbp<80,na.rm = T)) {
       return(0)}
-    if (any(c(sbp>=140,dbp>=90,sbp>=12+bpp(age,height,gender,1,percentile=95),dbp>=12+bpp(age,height,gender,2,percentile=95)), na.rm=T)) return(3)
+    if (any(c(sbp>=140,dbp>=90,sbp>=12+bp95[1],dbp>=12+bp95[2]), na.rm=T)) return(3)
     if (any(c(sbp>=130 & sbp<140, dbp>= 80 & dbp<90, sbp>=bp95[1] & sbp<bp95[1]+12, dbp>=bp95[2] & dbp<bp95[2]+12), na.rm=T)) return(2)
-    else return(1)
+    if (any(c(bpp[1]>=90 & bpp[1]<95,bpp[2]>=90 & bpp[2]<95,sbp>=120 & sbp<bp95[1],dbp>=80 & dbp<bp95[2]))) return (1)
+    return (-1)
   } 
   if (age>=13) {
     if (all(sbp<120,dbp<80, na.rm=T)) return(0)
     if (any(sbp>=140,dbp>=90, na.rm=T)) return(3)
     if (any(sbp>=130,dbp>=80, na.rm=T)) return(2)
-    else return(1)
+    if (any(sbp>=120 & sbp<130, dbp<80)) return(1)
+    else return(-1)
   }
 
 }
+

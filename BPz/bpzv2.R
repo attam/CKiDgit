@@ -30,7 +30,9 @@ if (!exists("BPcoef") | !exists("all_t")) load("BPz/BPcoefs.RData")
 bpp <- function(age,ht,mf,sysdia=sysdia,bp=NULL, z=NULL, percentile=NULL) {
   htz<-htz(ht,age,mf)
   # if arguments are outside of allowable ranges, return NA
-  if (any(!between(age,0,18),ht<0,anyNA(c(age,ht,mf)))) return(NA)
+  # if age>18, use 18 years
+  ifelse(age>=18, 18,age)
+  if (any(age<0,ht<0,anyNA(c(age,ht,mf)))) return(NA)
   # get height z-score, and if outside the range +/- 3.09, set it to 3.09
   if (abs(htz)>3.09) htz<-ifelse(htz<0,htz<- (-3.09),3.09)
   # set t values based on gender
@@ -72,17 +74,32 @@ bpp <- function(age,ht,mf,sysdia=sysdia,bp=NULL, z=NULL, percentile=NULL) {
     bpc[,9+dbp_o]*x4s+bpc[,2+dbp_o]*age+bpc[,3+dbp_o]*y2s+bpc[,4+dbp_o]*y3s+bpc[,5+dbp_o]*y4s+
     bpc[,10+dbp_o]*w+bpc[,11+dbp_o]*w2s+bpc[,12+dbp_o]*w3s+bpc[,13+dbp_o]*w4s
   if (!is.null(percentile)) {
-    return(fx[percentile])
+    # if percentile is not integer, return an intermediate value between the closest percentiles
+    # eg, 55.8th percentile will return a BP value that is equal to the 55th percentile BP + 80% of the difference between the 55th and 56th percentile BPs
+    if (round(percentile)==percentile) {
+      return(fx[percentile])
+    } else {
+      return (fx[percentile]+diff(fx,lag=1)[95]*(percentile-floor(percentile)))
+    }
+    
   } else {
     if (any(is.na(bp),bp<0)) return(NA)
     dif<-abs(bp-fx)
     # the following lines interpolates to find the closest percentile with 1 decimal precision
     # and handles the extreme cases, <1st percentile or >99th percentile
-    pclosest<-which.min(as.numeric(unlist(dif)))
-    if (bp<fx[1]) return(0.99)
-    if (bp>fx[99]) return(99.1)
-    if (pclosest==99) return(99)
-    p<-round(pclosest+(1-dif[pclosest]/fx[pclosest]/(dif[pclosest+1]/fx[pclosest+1])),1)
+    pclosest<-which.min(dif)
+    if (bp<fx[1]) p<-0.99
+    if (bp==fx[1]) p<-1
+    if (bp>fx[99]) p<-99.1
+    if (bp==fx[99]) p<-99
+    if (pclosest==99|pclosest==1) {
+      p<-pclosest
+    } else {
+    #p<-round(pclosest+(1-dif[pclosest]/fx[pclosest]/(dif[pclosest+1]/fx[pclosest+1])),1)
+    #pclosest
+    pclosest<-max(which(bp<=fx)[1],pclosest)
+    p<-pclosest+(bp-fx[pclosest])/(fx[pclosest]-fx[pclosest-1])
+    }
     ifelse(z, return(qnorm(p/100)),return(p))
   }
   }
