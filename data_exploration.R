@@ -291,8 +291,8 @@ round(100*prop.table(table2,margin=1),1)
 # BPstatus_visit.csv: BPclass (columns) by visit (rows, only even visits when ABPM obtained)
 table3<-test %>% filter(VISIT%%20==0) %>% group_by(VISIT) %>% select(BPclass.factor) %>% table()
 write.table(table3,row.names=T, col.names = NA, "BPstatus_visit.csv")
-table3
-round(100*prop.table(table3,margin=1),1)
+table3 %>% addmargins(2)
+round(100*prop.table(table3,margin=1),1) %>% addmargins(2)
 
 # Counts of patients on each antihypertensive medication grouped by visit and sorted (descending)
 unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=n_rx~addNA(factor(med.corrected))+VISIT)

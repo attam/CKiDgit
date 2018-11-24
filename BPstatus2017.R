@@ -26,7 +26,7 @@ BPstatus2017<- function(sbp,dbp,age,gender,height) {
       return(0)}
     if (any(c(sbp>=140,dbp>=90,sbp>=12+bp95[1],dbp>=12+bp95[2]), na.rm=T)) return(3)
     if (any(c(sbp>=130 & sbp<140, dbp>= 80 & dbp<90, sbp>=bp95[1] & sbp<bp95[1]+12, dbp>=bp95[2] & dbp<bp95[2]+12), na.rm=T)) return(2)
-    if (any(c(bpp[1]>=90 & bpp[1]<95,bpp[2]>=90 & bpp[2]<95,sbp>=120 & sbp<bp95[1],dbp>=80 & dbp<bp95[2]))) return (1)
+    ifelse(is.na(any(c(bpp[1]>=90 & bpp[1]<95,bpp[2]>=90 & bpp[2]<95,sbp>=120 & sbp<bp95[1],dbp>=80 & dbp<bp95[2]))),stop, return (1))
     return (-1)
   } 
   if (age>=13) {

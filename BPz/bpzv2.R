@@ -87,20 +87,19 @@ bpp <- function(age,ht,mf,sysdia=sysdia,bp=NULL, z=NULL, percentile=NULL) {
     dif<-abs(bp-fx)
     # the following lines interpolates to find the closest percentile with 1 decimal precision
     # and handles the extreme cases, <1st percentile or >99th percentile
-    pclosest<-which.min(dif)
-    if (bp<fx[1]) p<-0.99
-    if (bp==fx[1]) p<-1
-    if (bp>fx[99]) p<-99.1
-    if (bp==fx[99]) p<-99
-    if (pclosest==99|pclosest==1) {
-      p<-pclosest
-    } else {
+    p<-ifelse(bp<fx[1],0.99,ifelse(bp==fx[1],1,ifelse(bp>fx[99],99.1,-1)))
     #p<-round(pclosest+(1-dif[pclosest]/fx[pclosest]/(dif[pclosest+1]/fx[pclosest+1])),1)
     #pclosest
-    pclosest<-max(which(bp<=fx)[1],pclosest)
-    p<-pclosest+(bp-fx[pclosest])/(fx[pclosest]-fx[pclosest-1])
+    if(p==-1) {
+      pclosest<-which(bp<=fx)[1]
+      deltap<-fx[pclosest]-fx[pclosest-1]
+      if (abs(bp-fx[pclosest-1])>abs(bp-fx[pclosest])) {
+        p<-pclosest-0.5*(abs(bp-fx[pclosest])/abs(bp-fx[pclosest-1]))
+      } else{
+        p<-pclosest-0.5*(abs(bp-fx[pclosest-1]))/abs(bp-fx[pclosest]) }
     }
-    ifelse(z, return(qnorm(p/100)),return(p))
-  }
-  }
-
+    if (z) {
+      return(qnorm(p/100))
+      } else {return(p)}
+  }}
+  
