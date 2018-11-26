@@ -7,6 +7,9 @@ library(histogram)
 library(gplots)
 library(tidyr)
 library(stats)
+library(tibble)
+detach("package:MASS", unload=TRUE)
+
 #this change is to test git functionality...
 #library("dplyr", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
 #library("reshape2", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
@@ -156,15 +159,9 @@ medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(ndup=n_distinct(M
 medsum_full %>% group_by(VISIT) %>% filter(ndup>1) %>% summarise(npts.dup.visit=n_distinct(CASEID)) # show how many patients at each visit are duplicated
 medsum_full %>% group_by(VISIT) %>% arrange(desc(visitsd)) # show the extreme values of visit date sd
 medsum_full<-medsum_full %>%filter(ndup==1) # remove all duplicates from the data
-
-
-
 medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(n_agents=n_distinct(med.corrected, na.rm=TRUE))
 medsum_full<-medsum_full %>% ungroup %>% nest(c(6,8,9,11,13,14), .key="rx_info") %>% select(-c(3,4,7))
 medsum_full<-dcast(medsum_full,CASEID+VISIT+MSVISDAT+n_agents+mean_compliance~med.corrected, value.var="rx_info")
-
-# save(medsum_full, file='medsum_full.1.RData')
-load(file='medsum_full.1.RData')
 
 test<-full_join(medsum_full,test)
 
@@ -178,7 +175,7 @@ change_null_to_list <- function(x) {
   else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA),DDI=as.numeric(NA),compliance=as.numeric(NA)))))}
 }
 
-# for (i in 9:58) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
+for (i in which(names(test)=="ACETAZOLAMIDE"):which(names(test)=="VERAPAMIL")) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
 
 # cardio data organization
 # overview of data...
@@ -211,8 +208,6 @@ missing_htpct<-which(is.na(test$HTPCTAG) & !is.na(test$AVHEIGHT))
 test$HTPCTAG[missing_htpct]<- mapply(htz,test$AVHEIGHT[missing_htpct], test$age[missing_htpct], test$MALE1FE0[missing_htpct],p=T)
 test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$MALE1FE0,test$HTPCTAG,test$SBPPCTAGH,test$DBPPCTAGH)
 
-# save(test,file="test.RData")
-load(file="test.RData")
 # stacked barplot of BP status (in proportions) grouped by visit
 test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% table(useNA = 'always') %>% prop.table(margin=1)
 
@@ -225,28 +220,72 @@ test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% t
 # 2 = masked hyeprtension (MH)
 # 3 = ambulatory hypertension (AH)
 
-# cardio$BPstatus=-1
-# cardio$BPstatus[cardio$WKSYSINDX<0.95 & cardio$WKDIAINDX<0.95 & cardio$SLSYSINDX<0.95 & cardio$SLDIAINDX<0.95 & cardio$WKSYSLOAD<25 & cardio$WKDIALOAD<25 & cardio$SLSYSLOAD<25 & cardio$SLDIALOAD<25 & cardio$SBPPCTAGH<95 & cardio$DBPPCTAGH<95]<-0
-# cardio$BPstatus[(cardio$WKSYSINDX<0.95 & cardio$WKDIAINDX<0.95 & cardio$SLSYSINDX<0.95 & cardio$SLDIAINDX<0.95 & cardio$WKSYSLOAD<25 & cardio$WKDIALOAD<25 & cardio$SLSYSLOAD<25 & cardio$SLDIALOAD<25) & (cardio$SBPPCTAGH>=95 | cardio$DBPPCTAGH>=95)]<-1
-# cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSINDX>=0.95 | cardio$SLDIAINDX>=0.95 | cardio$WKSYSLOAD>=25 | cardio$WKDIALOAD>=25 | cardio$SLSYSLOAD>=25 | cardio$SLDIALOAD>=25) & (cardio$SBPPCTAGH<95 & cardio$DBPPCTAGH<95)]<-2
-# cardio$BPstatus[(cardio$WKSYSINDX>=0.95 | cardio$WKDIAINDX>=0.95 | cardio$SLSYSINDX>=0.95 | cardio$SLDIAINDX>=0.95 | cardio$WKSYSLOAD>=25 | cardio$WKDIALOAD>=25 | cardio$SLSYSLOAD>=25 | cardio$SLDIALOAD>=25) & (cardio$SBPPCTAGH>=95 | cardio$DBPPCTAGH>=95)]<-3
 source('bpclass.R')
+# noctHTN variable: BP% dipping <10%
 cardio<-cardio %>%rowwise()%>% mutate(noctHTN=sum(SYSPCTDIPPING<10,DIAPCTDIPPING<10))
 cardio<-left_join(cardio,test %>% select(CASEID,VISIT,SBPPCTAGH2017,DBPPCTAGH2017, age,MALE1FE0,AVHEIGHT))
 cardio<-cardio %>% rowwise() %>% mutate(BPclass= bpclass(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017))
 test<-full_join(cardio %>% select(CASEID,VISIT,ABPMSUCCESS, BPclass,noctHTN),test)
 # combine BP class variants into larger groups using BP classification from 2014
 test$BPclass.factor<-cut(test$BPclass,0:6,right=FALSE, labels=c("NL","WCH","PH","MH","AH","SAH"),ordered_result = TRUE)
+# Create variable LVMIp using LVMIp function to calculate LVMI percentiles
+test$LVMIp<-NA
+test$LVMIp[which(!is.na(test$LVMI))]<-mapply(LVMIp, test$MALE1FE0[which(!is.na(test$LVMI))],test$age[which(!is.na(test$LVMI))],test$LVMI[which(!is.na(test$LVMI))])
+
+
+# parse drug info stored in test as separate variables for analysis
+source("get_drug_info.R")
+drugname<-names(test)[which(names(test)=="ACETAZOLAMIDE"):which(names(test)=="VERAPAMIL")]
+drugname<-drugname[-c(3,5,6,11,20,26,33)]
+temp <- paste(drugname[1:43], "<- get_drug_info(test,'",drugname,"', c(1:6))", sep="")
+eval(parse(text=temp))
+
+temp.1<-paste("test$",drugname[1:43],"_DDI<-",drugname[1:43],"$DDI", sep="")
+temp.2<-paste("test$",drugname[1:43],"_std_dose<-",drugname[1:43],"$std_dose", sep="")
+eval(parse(text=temp.1))
+eval(parse(text=temp.2))
+
+# draw histograms of DDI for each drug
+temp<-paste("if (!all(is.na(",drugname[1:43],"$DDI))) hist(",drugname[1:43],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:43],"\"))", sep="")
+par(mfrow=c(6,4))
+par(mar=c(2,2,1,1))
+eval(parse(text=temp))
+
+# comparing patients based on DDI
+# create tibble containing DDI for all meds, sorted in order of descending DDI
+# create separate columns for each medication (med1-med5)
+# create variable mean_DDI representing mean DDI for each patient (ie, mean DDI of all meds for each patient, patients with 0 meds have mean DDI = 0)
+#temp_DDI<-test%>% select(ends_with('_DDI')) %>% as.matrix %>% apply(.,1,sort,decreasing=T,na.last=T)
+test$mean_DDI<-NULL
+test$DDI_all<-as.data.frame(test %>% select(ends_with("_DDI")))
+DDI_all.2<-apply(test$DDI_all,1,FUN=function(x) sort(x,decreasing=TRUE,na.last=TRUE))
+test$DDI_all<-t(DDI_all.2)[,1:5]
+test$DDI_all[which(test$n_agents==0),1]<-0
+temp<-paste("test$DDI_",1:5,"<-test$DDI_all[,",1:5,"]",sep='')
+eval(parse(text=temp))
+test$mean_DDI<-NA
+test$mean_DDI<-apply(test$DDI_all,1,FUN=function(x) mean(x,na.rm=TRUE))
+
+# save(test,file="test.RData")
+load(file="test.RData")
+### data organization complete ###
+
+
+### data analysis begin ###
+library(epitab)
+library(neat_table)
+
+# compare LVMIp to LVHE: show table of all LVMIp percentiles and the average proportion of patients categorized as LVH (using LVHE)
+test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVMIp) %>% summarise(mean_LVHE=mean(LVHE, na.rm=TRUE), mean_LVHF=mean(LVHF,na.rm=TRUE))
+test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVHE,LVHF) %>% summarise(mean_LVMIp=mean(LVMIp, na.rm=TRUE))
+
 # stacked barplot of BP class (in proportions) grouped by visit
 table.a<-test %>% filter(VISIT%%20==0)%>% group_by(VISIT) %>% select(BPclass.factor) %>% table(useNA = 'no') 
 table.a%>% plot(prop.table(margin=1)[,1], col=c("green","greenyellow","yellow","orange","orangered","red4"),main="Proportion of BP classes by visit", ylab="BP class (%)")
+table.a
 # proportion table of nocturnal HTN by BP class grouped by visit
-table.b<-test %>% filter(VISIT%%20==0) %>% group_by(BPclass.factor) %>% select(noctHTN,VISIT) %>% table(useNA = 'no') %>% prop.table(margin=3)*100
-# to save time, use this as starting point...
-# duplicates<-test %>% group_by(CASEID,VISIT) %>% mutate(duplicates=n_distinct(MSVISDAT)) %>% filter(duplicates>1)
-#save(test,duplicates, file="test.RData")
-load(file="test.RData")
-
+table.b<-test %>% filter(VISIT%%20==0) %>% group_by(BPclass.factor) %>% select(noctHTN,VISIT) %>% table(useNA = 'no')
+table.b %>% addmargins
 # table to demonstrate differences in classification of patients during visit 20
 BPstatus_comparison<-test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(.,useNA = "always") %>% addmargins()
 write.table(BPstatus_comparison,row.names=T, col.names=NA,"BPstatus_comparison.csv")
@@ -257,10 +296,9 @@ BPstatus_comparison
 
 # relationship between BP status and number of antihypertensive agents:
 # reference: tutorial of chi square analysis in r: http://www.sthda.com/english/wiki/chi-square-test-of-independence-in-r
-n_agents_20<-test %>% filter(VISIT==20)
 # show the table
 # excludes patients whose BP status unknown (either clinic BP or ABPM study results are missing)
-n_agents_20 %>% select(n_agents,BPclass.factor) %>% table(., useNA = 'no') %>% addmargins()
+test %>% filter(VISIT==20) %>% select(n_agents,BPclass.factor) %>% table(., useNA = 'no') %>% addmargins()
 # balloonplot
 dt <- table(n_agents_20$n_agents,n_agents_20$BPclass.factor, exclude = c(-1,NA))
 balloonplot(t(dt), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
@@ -270,15 +308,24 @@ balloonplot(t(dt), main ="relationship between BP status and number of antihyper
 chisq <- chisq.test(dt)
 chisq
 library(corrplot,ggplot2)
-corrplot(chisq$residuals, is.cor = FALSE)
+corrplot(chisq$residuals, is.cor = FALSE, title="chi-squared test residuals for\n BP class vs n_agents",addCoef.col = 1,mar=c(1,0,2.5,1),number.cex=0.6)
 
 # writing table files
 #table1
 # visit20_BPstatus_n_agents.csv: BP status (columns) by number of agents (rows) in VISIT 20 only
 # note: includes those with unknown BP status (-1), due to unknown clinic BP percentile, or unsuccessfull ABPM study
+test$n_agents.factor<-as.factor(test$n_agents)
+test$VISIT.factor<-as.factor(test$VISIT[test$VISIT%%10==0])
 table1<-test %>% filter(VISIT==20) %>% select(n_agents,BPclass.factor) %>% table() %>% addmargins()
 write.table(table1,row.names=T, col.names=NA, "visit20_BPstatus_n_agents.csv")
 table1
+
+# neat_tables
+
+#remove missing values for each factor
+test.20<-test %>% filter(VISIT==20) %>% select(n_agents.factor,BPclass.factor) %>% na.omit()
+cont.table1<-contingency_table(list("n_agents"="n_agents.factor"),outcomes=list("BP class"="BPclass.factor"),crosstab_funcs=list(freq()),data=test.20)
+neat_table(cont.table1)
 
 # n_agents_visit.csv: n_agents(columns) by visit (rows)
 # note: includes those not taking any antihypertensive meds
@@ -287,12 +334,22 @@ write.table(table2, row.names=T, col.names=NA,"n_agents_visit.csv")
 table2
 # proportion table version of table 2
 round(100*prop.table(table2,margin=1),1)
+test.2<-test%>% filter(VISIT%%10==0)
+test.2$VISIT.factor<-as.factor(test.2$VISIT)
+test.2<-test.2 %>%  select(VISIT.factor,n_agents.factor) %>% na.omit()
+cont.table2<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("n_agents"="n_agents.factor"),crosstab_funcs=list(freq()),data=test.2)
+neat_table(cont.table2)
 
 # BPstatus_visit.csv: BPclass (columns) by visit (rows, only even visits when ABPM obtained)
 table3<-test %>% filter(VISIT%%20==0) %>% group_by(VISIT) %>% select(BPclass.factor) %>% table()
 write.table(table3,row.names=T, col.names = NA, "BPstatus_visit.csv")
 table3 %>% addmargins(2)
 round(100*prop.table(table3,margin=1),1) %>% addmargins(2)
+test.3<-test%>% filter(VISIT%%20==0)
+test.3$VISIT.factor<-as.factor(test.3$VISIT)
+test.3<-test.3 %>%  select(VISIT.factor,BPclass.factor) %>% na.omit()
+cont.table3<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("BP class"="BPclass.factor"),crosstab_funcs=list(freq()),data=test.3)
+neat_table(cont.table3)
 
 # Counts of patients on each antihypertensive medication grouped by visit and sorted (descending)
 unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=n_rx~addNA(factor(med.corrected))+VISIT)
@@ -306,25 +363,74 @@ table4
 # 0 = SBP and DBP are measured
 table(is.na(test$SBP)+is.na(test$DBP))
 
-# parse drug info stored in test as separate variables for analysis
-source("get_drug_info.R")
-drugname<-names(test)[9:58]
-drugname<-drugname[-c(3,5,6,11,20,26,33)]
-temp <- paste(drugname[1:43], "<- get_drug_info(test,'",drugname,"', c(1:6))", sep="")
-eval(parse(text=temp))
+# overview of DDI
+test.20<-test %>% filter(VISIT==20)
+test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$n_agents,test.20$BPclass.factor))
+names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"n_agents","BPclass")
+test.20.melted<-melt(test.20.DDI,id="n_agents")
+test.20.melted.filtered<-test.20.melted %>% filter(value!=0)
+test.20.melted.filtered$variable.factor<-as.factor(test.20.melted.filtered$variable)
+test.20.melted.filtered$n_agents.factor<-as.factor(test.20.melted.filtered$n_agents)
+ggplot(aes(y=value,fill=n_agents.factor,x=variable.factor),data=subset(test.20.melted.filtered, value<3))+labs(title="Drug Dose Index (DDI) vs n_agents",x="DDI for medications 1-4", y="DDI (dose/max dose)")+geom_boxplot()
+ggplot(aes(y=value,fill=variable.factor,x=n_agents.factor),data=subset(test.20.melted.filtered, value<3))+labs(title="Drug Dose Index (DDI) vs n_agents\n(Visit 20)",x="# BP meds taken", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="DDI 1-4"))+geom_boxplot()
 
-temp.1<-paste("test$",drugname[1:43],"_DDI<-",drugname[1:41],"$DDI", sep="")
-temp.2<-paste("test$",drugname[1:43],"_std_dose<-",drugname[1:41],"$std_dose", sep="")
-eval(parse(text=temp.1))
-eval(parse(text=temp.2))
+# DDI vs BP class
+test.20<-test %>% filter(VISIT==20)
+test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$BPclass.factor))
+names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"BPclass")
+test.20.melted.2<-melt(test.20.DDI,id="BPclass")
+test.20.melted.2$BPclass.factor<-factor(test.20.melted.2$BPclass, labels=c("NL","WCH","PH","MH","AH","SAH"),ordered = TRUE)
+test.20.melted.2.filtered<-test.20.melted.2 %>% filter(!is.na(BPclass.factor))
+test.20.melted.2.filtered$variable.factor<-as.factor(test.20.melted.2.filtered$variable)
+ggplot(aes(y=value,fill=BPclass.factor,x=variable.factor),data=subset(test.20.melted.2.filtered, value<1.5))+labs(title="Drug Dose Index (DDI) vs BP class",x="DDI for medications 1-4", y="DDI (dose/max dose)")+labs(title="Drug Dose Index (DDI) vs BP class\n(Visit 20)",x="DDI 1-4", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="BP class"))+geom_boxplot()
 
-# draw histograms of DDI for each drug
-temp<-paste("if (!all(is.na(",drugname[1:43],"$DDI))) hist(",drugname[1:43],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:43],"\"))", sep="")
-par(mfrow=c(6,4))
-par(mar=c(2,2,1,1))
-eval(parse(text=temp))
+# DDI vs nocturnal HTN
+test.20<-test %>% filter(VISIT==20)
+test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$noctHTN))
+names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"noctHTN")
+test.20.melted.6<-melt(test.20.DDI,id="noctHTN")
+test.20.melted.6$noctHTN.factor<-as.factor(test.20.melted.6$noctHTN)
+test.20.melted.6.filtered<-test.20.melted.6 %>% filter(!is.na(noctHTN.factor))
+test.20.melted.6.filtered$variable.factor<-as.factor(test.20.melted.6.filtered$variable)
+ggplot(aes(y=value,fill=noctHTN.factor,x=variable.factor),data=subset(test.20.melted.6.filtered, value<3))+labs(title="Drug Dose Index (DDI) vs nocturnal HTN status",x="DDI for medications 1-4", y="DDI (dose/max dose)")+labs(title="Drug Dose Index (DDI) vs nocturnal HTN status\n(Visit 20)",x="DDI 1-4", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="Nocturnal HTN (yes/no)"))+geom_boxplot()
 
-# comparing patients based on DDI
-temp_DDI<-test%>% select(ends_with('_DDI')) %>% as.matrix %>% apply(.,1,sort,decreasing=T,na.last=T)
-test$DDI_all<-as_tibble(t(temp_DDI))
+# mean DDI vs BP class
+test.20<-test %>% filter(VISIT==20,n_agents>=2)
+test.20.DDI<-as_tibble(cbind(test.20$mean_DDI,test.20$BPclass.factor))
+names(test.20.DDI)<-c("mean_DDI","BPclass")
+test.20.melted.4<-melt(test.20.DDI,id="BPclass")
+test.20.melted.4$BPclass.factor<-factor(test.20.melted.4$BPclass, labels=c("NL","WCH","PH","MH","AH","SAH"),ordered = TRUE)
+test.20.melted.4.filtered<-test.20.melted.4 %>% filter(!is.na(BPclass.factor))
+test.20.melted.4.filtered$variable.factor<-as.factor(test.20.melted.4.filtered$variable)
+ggplot(aes(y=value,fill=BPclass.factor),data=subset(test.20.melted.4.filtered, value<3))+labs(title="Mean Drug Dose Index (DDI) vs BP class",x="BP class", y="mean DDI (dose/max dose)")+labs(title="Mean Drug Dose Index (DDI) vs BP class\n(Visit 20)",x="BP class", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="BP class"))+geom_boxplot()+scale_fill_brewer(palette="Spectral", direction=-1)
+
+# mean_DDI vs CKD stage
+test.20<-test %>% filter(VISIT==20, n_agents>=1)
+test.20.DDI<-as_tibble(cbind(test.20$mean_DDI,test.20$CKD_stage))
+names(test.20.DDI)<-c("mean_DDI","CKD_stage")
+test.20.melted.5<-melt(test.20.DDI,id="CKD_stage")
+test.20.melted.5$CKD_stage.factor<-factor(test.20.melted.5$CKD_stage, labels=c(1:5),ordered = TRUE)
+test.20.melted.5.filtered<-test.20.melted.5 %>% filter(!is.na(CKD_stage.factor))
+test.20.melted.5.filtered$variable.factor<-as.factor(test.20.melted.5.filtered$variable)
+ggplot(aes(y=value,fill=CKD_stage.factor),data=subset(test.20.melted.5.filtered, value<3))+labs(title="Mean Drug Dose Index (DDI) vs CKD stage",x="CKD stage", y="mean DDI (dose/max dose)")+labs(title="Mean Drug Dose Index (DDI) vs BP class\n(Visit 20)",x="BP class", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="CKD stage"))+geom_boxplot()+scale_fill_brewer(palette="Spectral", direction=-1)
+
+# DDI vs LVMIp
+test.20<-test %>% filter(VISIT==20)
+test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$LVMIp))
+names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"LVMIp")
+test.20.melted.3<-melt(test.20.DDI,id="LVMIp")
+test.20.melted.3$LVMIp.factor<-factor(test.20.melted.3$LVMIp, labels=c(10,25,50,75,90,95),ordered = TRUE)
+test.20.melted.3.filtered<-test.20.melted.3 %>% filter(!is.na(LVMIp.factor))
+test.20.melted.3.filtered$variable.factor<-as.factor(test.20.melted.3.filtered$variable)
+ggplot(aes(y=value,fill=LVMIp.factor,x=variable.factor),data=subset(test.20.melted.3.filtered, value<3))+labs(title="Drug Dose Index (DDI) vs LVMI percentile",x="DDI for medications 1-4", y="DDI (dose/max dose)")+labs(title="Drug Dose Index (DDI) vs LVMI percentile\n(Visit 20)",x="DDI 1-4", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="LVMI percentile"))+geom_boxplot()
+
+# Logistic Regression
+
+
+# load visit 20 data
+load(file="test.20.RData")
+library(MASS)
+m<-polr(test.20$BPclass.factor~unlist(test.20$DDI_1)+unlist(test.20$DDI_2)+test.20$Upc+test.20$gfr+test.20$LVMIp+test.20$n_agents+test.20$BMIPCTAG+test.20$CKDONST+test.20$GHTOTINC+test.20$MALE1FE0+test.20$age,Hess=TRUE)
+summary(m)
+
 

@@ -7,6 +7,8 @@
 
 LVMIp<-function(gender,age,lvmi){
   load("LVMI_table.RData")
+  if(is.na(age)) return(NA)
+  if(age>=18) age<-17.9
   percentile<-c(10,25,50,75,90,95)
   slicenum<-ifelse(gender==0,2,1)
   rownum<-age %/% 2 + 2
