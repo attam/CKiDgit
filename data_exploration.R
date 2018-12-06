@@ -8,6 +8,7 @@ library(gplots)
 library(tidyr)
 library(stats)
 library(tibble)
+library(ggplot2)
 detach("package:MASS", unload=TRUE)
 
 #this change is to test git functionality...
@@ -225,9 +226,11 @@ source('bpclass.R')
 cardio<-cardio %>%rowwise()%>% mutate(noctHTN=sum(SYSPCTDIPPING<10,DIAPCTDIPPING<10))
 cardio<-left_join(cardio,test %>% select(CASEID,VISIT,SBPPCTAGH2017,DBPPCTAGH2017, age,MALE1FE0,AVHEIGHT))
 cardio<-cardio %>% rowwise() %>% mutate(BPclass= bpclass(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017))
-test<-full_join(cardio %>% select(CASEID,VISIT,ABPMSUCCESS, BPclass,noctHTN),test)
+cardio<-cardio %>% rowwise() %>% mutate(BPclass2= bpclass2(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017))
+test<-full_join(cardio %>% select(CASEID,VISIT,ABPMSUCCESS, BPclass,BPclass2,noctHTN),test)
 # combine BP class variants into larger groups using BP classification from 2014
 test$BPclass.factor<-cut(test$BPclass,0:6,right=FALSE, labels=c("NL","WCH","PH","MH","AH","SAH"),ordered_result = TRUE)
+test$BPclass2.factor<-cut(test$BPclass2,0:4,right=FALSE, labels=c("NL","WCH","MH","AH"),ordered_result = TRUE)
 # Create variable LVMIp using LVMIp function to calculate LVMI percentiles
 test$LVMIp<-NA
 test$LVMIp[which(!is.na(test$LVMI))]<-mapply(LVMIp, test$MALE1FE0[which(!is.na(test$LVMI))],test$age[which(!is.na(test$LVMI))],test$LVMI[which(!is.na(test$LVMI))])
@@ -283,9 +286,15 @@ test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVHE,LVHF) %>% 
 table.a<-test %>% filter(VISIT%%20==0)%>% group_by(VISIT) %>% select(BPclass.factor) %>% table(useNA = 'no') 
 table.a%>% plot(prop.table(margin=1)[,1], col=c("green","greenyellow","yellow","orange","orangered","red4"),main="Proportion of BP classes by visit", ylab="BP class (%)")
 table.a
+table.a.2<-test %>% filter(VISIT%%20==0)%>% group_by(VISIT) %>% select(BPclass2.factor) %>% table(useNA = 'no') 
+par(mfrow=c(1,1))
+table.a.2%>% plot(prop.table(margin=1)[,1], col=c("green","greenyellow","yellow","orange","orangered","red4"),main="Proportion of BP classes by visit", ylab="BP class (%)")
+table.a.2
 # proportion table of nocturnal HTN by BP class grouped by visit
 table.b<-test %>% filter(VISIT%%20==0) %>% group_by(BPclass.factor) %>% select(noctHTN,VISIT) %>% table(useNA = 'no')
 table.b %>% addmargins
+table.b.2<-test %>% filter(VISIT%%20==0) %>% group_by(BPclass2.factor) %>% select(noctHTN,VISIT) %>% table(useNA = 'no')
+table.b.2 %>% addmargins
 # table to demonstrate differences in classification of patients during visit 20
 BPstatus_comparison<-test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(.,useNA = "always") %>% addmargins()
 write.table(BPstatus_comparison,row.names=T, col.names=NA,"BPstatus_comparison.csv")
@@ -299,9 +308,13 @@ BPstatus_comparison
 # show the table
 # excludes patients whose BP status unknown (either clinic BP or ABPM study results are missing)
 test %>% filter(VISIT==20) %>% select(n_agents,BPclass.factor) %>% table(., useNA = 'no') %>% addmargins()
+test %>% filter(VISIT==20) %>% select(n_agents,BPclass2.factor) %>% table(., useNA = 'no') %>% addmargins()
 # balloonplot
-dt <- table(n_agents_20$n_agents,n_agents_20$BPclass.factor, exclude = c(-1,NA))
+test.20<-test %>% filter(VISIT==20)
+dt <- table(test.20$n_agents,test.20$BPclass.factor, exclude = c(-1,NA))
+dt.2 <- table(test.20$n_agents,test.20$BPclass2.factor, exclude = c(-1,NA))
 balloonplot(t(dt), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
+balloonplot(t(dt.2), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
 
 # chi-squared test shows highly significant p-value of 8.4E-5
 # suggesting n_agents and BP status are not randomly/evenly distributed
@@ -309,6 +322,17 @@ chisq <- chisq.test(dt)
 chisq
 library(corrplot,ggplot2)
 corrplot(chisq$residuals, is.cor = FALSE, title="chi-squared test residuals for\n BP class vs n_agents",addCoef.col = 1,mar=c(1,0,2.5,1),number.cex=0.6)
+
+# insights from this plot - demonstrates where n_agents and BP class deviates from the expected, if no relationship existed between these factors:
+# 1. n_agents positively correlates with AH group (ie, subjects with AH tend to have more anti-HTN agents)
+# 2. n_agents negatively correlated with MH group (ie, fewer than expected subjects with 3-4 agents, and more than expected subjects with 0 agents - suggests possible undertreatment - consistent with Barletta et al)
+# 3. n_agents positively correlates with WCH group (more than expected subjects with 3 and 4 agents, fewer than expected subjects with 1-2 agents - suggests possible overtreatment - not previously reported, but makes sense)
+# 4. n_agents does not have consistent pattern within the normotensive group (ie, more than expected on 1 agent, fewer than expected with 0,2-4 agents)
+
+chisq.2 <- chisq.test(dt.2)
+chisq.2
+library(corrplot,ggplot2)
+corrplot(chisq.2$residuals, is.cor = FALSE, title="chi-squared test residuals for\n BP class vs n_agents",addCoef.col = 1,mar=c(1,0,2.5,1),number.cex=0.6)
 
 # writing table files
 #table1
@@ -320,6 +344,12 @@ table1<-test %>% filter(VISIT==20) %>% select(n_agents,BPclass.factor) %>% table
 write.table(table1,row.names=T, col.names=NA, "visit20_BPstatus_n_agents.csv")
 table1
 
+test$n_agents.factor<-as.factor(test$n_agents)
+test$VISIT.factor<-as.factor(test$VISIT[test$VISIT%%10==0])
+table1.2<-test %>% filter(VISIT==20) %>% select(n_agents,BPclass2.factor) %>% table() %>% addmargins()
+write.table(table1.2,row.names=T, col.names=NA, "visit20_BPstatus_n_agents_v2.csv")
+table1.2
+
 # neat_tables
 
 #remove missing values for each factor
@@ -327,11 +357,16 @@ test.20<-test %>% filter(VISIT==20) %>% select(n_agents.factor,BPclass.factor) %
 cont.table1<-contingency_table(list("n_agents"="n_agents.factor"),outcomes=list("BP class"="BPclass.factor"),crosstab_funcs=list(freq()),data=test.20)
 neat_table(cont.table1)
 
+test.20<-test %>% filter(VISIT==20) %>% select(n_agents.factor,BPclass2.factor) %>% na.omit()
+cont.table1.2<-contingency_table(list("n_agents"="n_agents.factor"),outcomes=list("BP class2"="BPclass2.factor"),crosstab_funcs=list(freq()),data=test.20)
+neat_table(cont.table1.2)
+
 # n_agents_visit.csv: n_agents(columns) by visit (rows)
 # note: includes those not taking any antihypertensive meds
 table2<-test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table()
 write.table(table2, row.names=T, col.names=NA,"n_agents_visit.csv")
 table2
+
 # proportion table version of table 2
 round(100*prop.table(table2,margin=1),1)
 test.2<-test%>% filter(VISIT%%10==0)
@@ -347,9 +382,17 @@ table3 %>% addmargins(2)
 round(100*prop.table(table3,margin=1),1) %>% addmargins(2)
 test.3<-test%>% filter(VISIT%%20==0)
 test.3$VISIT.factor<-as.factor(test.3$VISIT)
-test.3<-test.3 %>%  select(VISIT.factor,BPclass.factor) %>% na.omit()
+test.3<-test.3 %>%  select(VISIT.factor,BPclass.factor,BPclass2.factor) %>% na.omit()
 cont.table3<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("BP class"="BPclass.factor"),crosstab_funcs=list(freq()),data=test.3)
 neat_table(cont.table3)
+
+table3.2<-test %>% filter(VISIT%%20==0) %>% group_by(VISIT) %>% select(BPclass2.factor) %>% table()
+write.table(table3.2,row.names=T, col.names = NA, "BPstatus_visit_v2.csv")
+table3.2 %>% addmargins(2)
+round(100*prop.table(table3.2,margin=1),1) %>% addmargins(2)
+test.3$VISIT.factor<-as.factor(test.3$VISIT)
+cont.table3.2<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("BP class2"="BPclass2.factor"),crosstab_funcs=list(freq()),data=test.3)
+neat_table(cont.table3.2)
 
 # Counts of patients on each antihypertensive medication grouped by visit and sorted (descending)
 unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=n_rx~addNA(factor(med.corrected))+VISIT)
@@ -365,8 +408,8 @@ table(is.na(test$SBP)+is.na(test$DBP))
 
 # overview of DDI
 test.20<-test %>% filter(VISIT==20)
-test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$n_agents,test.20$BPclass.factor))
-names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"n_agents","BPclass")
+test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$n_agents,test.20$BPclass.factor,test.20$BPclass2.factor))
+names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"n_agents","BPclass","BPclass2")
 test.20.melted<-melt(test.20.DDI,id="n_agents")
 test.20.melted.filtered<-test.20.melted %>% filter(value!=0)
 test.20.melted.filtered$variable.factor<-as.factor(test.20.melted.filtered$variable)
