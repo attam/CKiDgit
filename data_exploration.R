@@ -30,14 +30,13 @@ f15 <- read.csv("data/f15.csv")
 socdem <- read.csv("data/socdem.csv")
 growth <- read.csv("data/growth.csv")
 pe <- read.csv("data/pe.csv")
-gfrcalibratedsummary <- read.csv("data/gfrcalibratedsummary.csv")
+gfr <- read.csv("data/gfrcalibratedsummary.csv")
 advr <- read.csv("data/advr.csv")
 kidhist <- read.csv("data/kidhist.csv")
 l05 <- read.csv("data/l05.csv")
 l02 <- read.csv("data/l02.csv")
 l51 <- read.csv("data/l51.csv")
 l31 <- read.csv("data/l31.csv")
-gfr<-gfrcalibratedsummary
 gh <- read.csv("data/gh.csv")
 
 # data integrity issues:
@@ -98,7 +97,6 @@ gfr<-function(height,cr,cystatin,bun,gender, permissive=NULL) {
 }
 # gfr will be based on ckidfull equation if the data is available, otherwise bedside schartz equation is used
 test$gfr<-mapply(gfr,test$AVHEIGHT,test$SCR,test$CYC_DB,test$BUN,test$MALE1FE0, permissive=TRUE)
-test$gfr[which(is.na(test$gfr))]<-test$BEDGFR[which(is.na(test$gfr))]
 
 # add column for urine protein:creatinine ratio based on RLURPROT and RLURCREA
 # add column for percentage of total urine protein that is albumin (Ualb_pct)
@@ -161,9 +159,9 @@ medsum_full %>% group_by(VISIT) %>% filter(ndup>1) %>% summarise(npts.dup.visit=
 medsum_full %>% group_by(VISIT) %>% arrange(desc(visitsd)) # show the extreme values of visit date sd
 medsum_full<-medsum_full %>%filter(ndup==1) # remove all duplicates from the data
 medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(n_agents=n_distinct(med.corrected, na.rm=TRUE))
+medsum_full.old<-medsum_full
 medsum_full<-medsum_full %>% ungroup %>% nest(c(6,8,9,11,13,14), .key="rx_info") %>% select(-c(3,4,7))
 medsum_full<-dcast(medsum_full,CASEID+VISIT+MSVISDAT+n_agents+mean_compliance~med.corrected, value.var="rx_info")
-
 test<-full_join(medsum_full,test)
 
 # replace all NULL values of drugs with a tibble containing NA's using change_null_to_list function above
@@ -181,26 +179,33 @@ for (i in which(names(test)=="ACETAZOLAMIDE"):which(names(test)=="VERAPAMIL")) {
 # cardio data organization
 # overview of data...
 # display the time differences between ABPM and casual BP measurement dates
-# cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=ABPM_DATE-DB_DATE) %>% group_by(VISIT) %>% summarise_at(vars(date_dif),funs(mean_dif_days=365*mean(.,na.rm=TRUE),max_dif_yr=max, sd_dif_yr=sd(.,na.rm=TRUE)))
-# display the number of observations where the difference between the date of visit and the ABPM date is > 60 days (=TRUE)
+temp<-cardio %>% filter(VISIT %%20==0,CASEID %in% cases) %>% mutate(date_dif=ABPM_DATE-DB_DATE) %>% group_by(VISIT) %>% summarise_at(vars(date_dif),funs(mean_dif_days=365*mean(.,na.rm=TRUE),max_dif_yr=max(.,na.rm=TRUE), sd_dif_days=365*sd(.,na.rm=TRUE)))
+write_csv(temp,"ABPM_PE_time_dif.csv")
+# display the number of observations where the difference between the date of visit and the ABPM date is > 90 days (=TRUE)
 # consider excluding these observations since the BP status is less reliable
-# cardio %>% filter(BPstatus!=-1) %>% mutate(date_dif=abs(ABPM_DATE-DB_DATE)) %>% group_by(VISIT) %>% mutate(big_dif=date_dif>60/365) %>% select(big_dif) %>% table %>% addmargins
+temp<-cardio %>% filter(VISIT %% 20 ==0,CASEID %in% cases) %>% mutate(date_dif=abs(ABPM_DATE-DB_DATE)) %>% group_by(VISIT) %>% mutate(big_dif=date_dif>90/365) %>% select(big_dif) %>% table %>% addmargins
+write.table(temp,"ABPM_PE_bigtime_dif.csv")
 # display the counts for all the BP statuses grouped by visit
 # patients with BP status -1 occured when casual BP was not classified (either no BP entered at that visit, or BP entered, but no percentile/z-score)
 # cardio %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus !=-1) %>% select(BPstatus) %>% table() %>% addmargins
 # display information about timing of ABPM data, grouped by visits
-# cardio%>% filter(ABPMSUCCESS==1) %>% group_by(VISIT) %>% summarise_at(vars(ABPM_DATE), funs(date_mean=mean,date_min=min,date_max=max,n_pts=length))
+temp<-cardio%>% filter(VISIT %% 20==0,ABPMSUCCESS==1, CASEID %in% cases) %>% group_by(VISIT) %>% summarise_at(vars(ABPM_DATE), funs(date_mean=mean,date_min=min,date_max=max,n_pts=length))
+write_csv(temp,"ABPM_timing_by_visit.csv")
 
 # add columns for new 2017 AAP BP percentiles and z-scores (this takes about 2 minutes to calculate)
+source('bpp4.R')
 source('BPz/bpzv2.R')
+source('BPstatus4th.R')
+source('BPstatus2017.R')
+source('bpclass.R')
+source('bpclass2.R')
+
 test$SBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,1,test$SBP, z=F)
 test$DBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,2,test$DBP, z=F)
 test$SBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,1,test$SBP, z=T)
 test$DBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,2,test$DBP, z=T)
 
-source('BPstatus4th.R')
-source('BPstatus2017.R')
-source('bpp4.R')
+
 # classification of BP status based on 4th report and 2017 guidelines
 # note: BP status is NA when BP was unavailable
 test$BPstatus2017<-mapply(BPstatus2017,test$SBP,test$DBP,test$age,test$MALE1FE0,test$AVHEIGHT)
@@ -210,7 +215,7 @@ test$HTPCTAG[missing_htpct]<- mapply(htz,test$AVHEIGHT[missing_htpct], test$age[
 test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$MALE1FE0,test$HTPCTAG,test$SBPPCTAGH,test$DBPPCTAGH)
 
 # stacked barplot of BP status (in proportions) grouped by visit
-test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% table(useNA = 'always') %>% prop.table(margin=1)
+test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% table(useNA = 'no') %>%  plot()
 
 # cardio data organization
 # analysis of BP status
@@ -221,7 +226,6 @@ test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% t
 # 2 = masked hyeprtension (MH)
 # 3 = ambulatory hypertension (AH)
 
-source('bpclass.R')
 # noctHTN variable: BP% dipping <10%
 cardio<-cardio %>%rowwise()%>% mutate(noctHTN=sum(SYSPCTDIPPING<10,DIAPCTDIPPING<10))
 cardio<-left_join(cardio,test %>% select(CASEID,VISIT,SBPPCTAGH2017,DBPPCTAGH2017, age,MALE1FE0,AVHEIGHT))
@@ -263,7 +267,7 @@ test$mean_DDI<-NULL
 test$DDI_all<-as.data.frame(test %>% select(ends_with("_DDI")))
 DDI_all.2<-apply(test$DDI_all,1,FUN=function(x) sort(x,decreasing=TRUE,na.last=TRUE))
 test$DDI_all<-t(DDI_all.2)[,1:5]
-test$DDI_all[which(test$n_agents==0),1]<-0
+#test$DDI_all[which(test$n_agents==0),1]<-0
 temp<-paste("test$DDI_",1:5,"<-test$DDI_all[,",1:5,"]",sep='')
 eval(parse(text=temp))
 test$mean_DDI<-NA
@@ -275,28 +279,50 @@ load(file="test.RData")
 
 
 ### data analysis begin ###
-library(epitab)
-library(neat_table)
-
 # compare LVMIp to LVHE: show table of all LVMIp percentiles and the average proportion of patients categorized as LVH (using LVHE)
 test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVMIp) %>% summarise(mean_LVHE=mean(LVHE, na.rm=TRUE), mean_LVHF=mean(LVHF,na.rm=TRUE))
 test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVHE,LVHF) %>% summarise(mean_LVMIp=mean(LVMIp, na.rm=TRUE))
 
+# define cohort
+cases<-test.20 %>% filter(ABPMSUCCESS==1,!is.na(SCR),!is.na(AVHEIGHT), !is.na(AVWEIGHT), !is.na(BPstatus2017)) %>% select(CASEID) %>% unlist %>% as.numeric()
+test.cohort<-test %>% filter(VISIT==20, CASEID %in% cases)
+
+# timing of PE to ABPM
+# library(ggalt)
+# theme_set(theme_classic())
+# test.cohort$CASEID.factor=factor(test.cohort$CASEID, levels=as.char(test.cohort$CASEID))
+# gg<-ggplot(test.cohort,aes(x=MSVISDAT,xend=ABPM_DATE,y=CASEID.factor,group=CASEID.factor))+
+#   geom_dumbbell(color="#a3c4dc",
+#                size=0.75,
+#                point.colour.1="#0e668b")+
+#   scale_x_continuous(label=percent)+
+#   labs(x=NULL,
+#        y=NULL,
+#        title="Time differences: PE vs ABPM",
+#        caption="CKiD")+
+#   theme(plot.title=element_text(hjust=0.5,face="bold"))
+# plot(gg)
+
+
+library(epitab)
+library(neat_table)
+
+
+
 # stacked barplot of BP class (in proportions) grouped by visit
-table.a<-test %>% filter(VISIT%%20==0)%>% group_by(VISIT) %>% select(BPclass.factor) %>% table(useNA = 'no') 
-table.a%>% plot(prop.table(margin=1)[,1], col=c("green","greenyellow","yellow","orange","orangered","red4"),main="Proportion of BP classes by visit", ylab="BP class (%)")
-table.a
 table.a.2<-test %>% filter(VISIT%%20==0)%>% group_by(VISIT) %>% select(BPclass2.factor) %>% table(useNA = 'no') 
 par(mfrow=c(1,1))
 table.a.2%>% plot(prop.table(margin=1)[,1], col=c("green","greenyellow","yellow","orange","orangered","red4"),main="Proportion of BP classes by visit", ylab="BP class (%)")
 table.a.2
+
 # proportion table of nocturnal HTN by BP class grouped by visit
 table.b<-test %>% filter(VISIT%%20==0) %>% group_by(BPclass.factor) %>% select(noctHTN,VISIT) %>% table(useNA = 'no')
 table.b %>% addmargins
 table.b.2<-test %>% filter(VISIT%%20==0) %>% group_by(BPclass2.factor) %>% select(noctHTN,VISIT) %>% table(useNA = 'no')
 table.b.2 %>% addmargins
+
 # table to demonstrate differences in classification of patients during visit 20
-BPstatus_comparison<-test %>% filter(VISIT==20) %>% select(BPstatus4th,BPstatus2017) %>% table(.,useNA = "always") %>% addmargins()
+BPstatus_comparison<-test.cohort %>% select(BPstatus4th,BPstatus2017) %>% table(.,useNA = "ifany") %>% addmargins()
 write.table(BPstatus_comparison,row.names=T, col.names=NA,"BPstatus_comparison.csv")
 BPstatus_comparison
 
@@ -307,21 +333,19 @@ BPstatus_comparison
 # reference: tutorial of chi square analysis in r: http://www.sthda.com/english/wiki/chi-square-test-of-independence-in-r
 # show the table
 # excludes patients whose BP status unknown (either clinic BP or ABPM study results are missing)
-test %>% filter(VISIT==20) %>% select(n_agents,BPclass.factor) %>% table(., useNA = 'no') %>% addmargins()
-test %>% filter(VISIT==20) %>% select(n_agents,BPclass2.factor) %>% table(., useNA = 'no') %>% addmargins()
-# balloonplot
-test.20<-test %>% filter(VISIT==20)
-dt <- table(test.20$n_agents,test.20$BPclass.factor, exclude = c(-1,NA))
-dt.2 <- table(test.20$n_agents,test.20$BPclass2.factor, exclude = c(-1,NA))
+temp<-test.cohort %>% select(n_agents,BPclass2.factor) %>% table(., useNA = 'no') %>% addmargins()
+write.table(temp,row.names=T,col.names=NA,"BPclass_by_n_agents_v20.csv")
+
+# balloonplot (association between n_agents vs BPclass2)
+dt <- table(test.cohort$n_agents,test.cohort$BPclass2.factor, exclude = c(-1,NA))
 balloonplot(t(dt), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
-balloonplot(t(dt.2), main ="relationship between BP status and number of antihypertensive agents used at visit 20", xlab ="BP status", ylab="n_agents",label = FALSE, show.margins = FALSE)
 
 # chi-squared test shows highly significant p-value of 8.4E-5
 # suggesting n_agents and BP status are not randomly/evenly distributed
 chisq <- chisq.test(dt)
 chisq
 library(corrplot,ggplot2)
-corrplot(chisq$residuals, is.cor = FALSE, title="chi-squared test residuals for\n BP class vs n_agents",addCoef.col = 1,mar=c(1,0,2.5,1),number.cex=0.6)
+corrplot(chisq$residuals, is.cor = FALSE, title="chi-squared test residuals for\n BP class vs n_agents\n (X-squared = 27.946, df = 12, p-value = 0.005634)",addCoef.col = 1,mar=c(1,0,2.5,1),number.cex=0.6)
 
 # insights from this plot - demonstrates where n_agents and BP class deviates from the expected, if no relationship existed between these factors:
 # 1. n_agents positively correlates with AH group (ie, subjects with AH tend to have more anti-HTN agents)
@@ -350,66 +374,59 @@ table1.2<-test %>% filter(VISIT==20) %>% select(n_agents,BPclass2.factor) %>% ta
 write.table(table1.2,row.names=T, col.names=NA, "visit20_BPstatus_n_agents_v2.csv")
 table1.2
 
-# neat_tables
-
-#remove missing values for each factor
-test.20<-test %>% filter(VISIT==20) %>% select(n_agents.factor,BPclass.factor) %>% na.omit()
-cont.table1<-contingency_table(list("n_agents"="n_agents.factor"),outcomes=list("BP class"="BPclass.factor"),crosstab_funcs=list(freq()),data=test.20)
-neat_table(cont.table1)
-
-test.20<-test %>% filter(VISIT==20) %>% select(n_agents.factor,BPclass2.factor) %>% na.omit()
-cont.table1.2<-contingency_table(list("n_agents"="n_agents.factor"),outcomes=list("BP class2"="BPclass2.factor"),crosstab_funcs=list(freq()),data=test.20)
-neat_table(cont.table1.2)
+# # neat_tables
+# 
+# #remove missing values for each factor
+# test.20<-test %>% filter(VISIT==20) %>% select(n_agents.factor,BPclass.factor) %>% na.omit()
+# cont.table1<-contingency_table(list("n_agents"="n_agents.factor"),outcomes=list("BP class"="BPclass.factor"),crosstab_funcs=list(freq()),data=test.20)
+# neat_table(cont.table1)
+# 
+# test.20<-test %>% filter(VISIT==20) %>% select(n_agents.factor,BPclass2.factor) %>% na.omit()
+# cont.table1.2<-contingency_table(list("n_agents"="n_agents.factor"),outcomes=list("BP class2"="BPclass2.factor"),crosstab_funcs=list(freq()),data=test.20)
+# neat_table(cont.table1.2)
 
 # n_agents_visit.csv: n_agents(columns) by visit (rows)
 # note: includes those not taking any antihypertensive meds
-table2<-test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table()
+table2<-test %>% filter(VISIT%%10==0) %>% select(VISIT,n_agents) %>% table(useNA = "always") %>% addmargins()
 write.table(table2, row.names=T, col.names=NA,"n_agents_visit.csv")
 table2
 
-# proportion table version of table 2
-round(100*prop.table(table2,margin=1),1)
-test.2<-test%>% filter(VISIT%%10==0)
-test.2$VISIT.factor<-as.factor(test.2$VISIT)
-test.2<-test.2 %>%  select(VISIT.factor,n_agents.factor) %>% na.omit()
-cont.table2<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("n_agents"="n_agents.factor"),crosstab_funcs=list(freq()),data=test.2)
-neat_table(cont.table2)
+table2.2<-test %>% filter(VISIT%%10==0, CASEID %in% cases) %>% select(VISIT,n_agents) %>% table(useNA = "always") %>% addmargins()
+write.table(table2.2, row.names=T, col.names=NA,"n_agents_visit_cohort.csv")
+table2.2
 
 # BPstatus_visit.csv: BPclass (columns) by visit (rows, only even visits when ABPM obtained)
-table3<-test %>% filter(VISIT%%20==0) %>% group_by(VISIT) %>% select(BPclass.factor) %>% table()
-write.table(table3,row.names=T, col.names = NA, "BPstatus_visit.csv")
-table3 %>% addmargins(2)
-round(100*prop.table(table3,margin=1),1) %>% addmargins(2)
-test.3<-test%>% filter(VISIT%%20==0)
-test.3$VISIT.factor<-as.factor(test.3$VISIT)
-test.3<-test.3 %>%  select(VISIT.factor,BPclass.factor,BPclass2.factor) %>% na.omit()
-cont.table3<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("BP class"="BPclass.factor"),crosstab_funcs=list(freq()),data=test.3)
-neat_table(cont.table3)
+table3<-test %>% filter(VISIT%%20==0,CASEID %in% cases) %>% group_by(VISIT) %>% select(BPclass2.factor) %>% table() %>% addmargins(2)
+write.table(table3,row.names=T, col.names = NA, "BPstatus_visit_cohort.csv")
+table3
+# round(100*prop.table(table3,margin=1),1) %>% addmargins(2)
+# test.3<-test%>% filter(VISIT%%20==0)
+# test.3$VISIT.factor<-as.factor(test.3$VISIT)
+# test.3<-test.3 %>%  select(VISIT.factor,BPclass.factor,BPclass2.factor) %>% na.omit()
+# cont.table3<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("BP class"="BPclass.factor"),crosstab_funcs=list(freq()),data=test.3)
+# neat_table(cont.table3)
 
-table3.2<-test %>% filter(VISIT%%20==0) %>% group_by(VISIT) %>% select(BPclass2.factor) %>% table()
-write.table(table3.2,row.names=T, col.names = NA, "BPstatus_visit_v2.csv")
-table3.2 %>% addmargins(2)
-round(100*prop.table(table3.2,margin=1),1) %>% addmargins(2)
-test.3$VISIT.factor<-as.factor(test.3$VISIT)
-cont.table3.2<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("BP class2"="BPclass2.factor"),crosstab_funcs=list(freq()),data=test.3)
-neat_table(cont.table3.2)
+# table3.2<-test %>% filter(VISIT%%20==0) %>% group_by(VISIT) %>% select(BPclass2.factor) %>% table()
+# write.table(table3.2,row.names=T, col.names = NA, "BPstatus_visit_v2.csv")
+# table3.2 %>% addmargins(2)
+# round(100*prop.table(table3.2,margin=1),1) %>% addmargins(2)
+# test.3$VISIT.factor<-as.factor(test.3$VISIT)
+# cont.table3.2<-contingency_table(list("VISIT"="VISIT.factor"),outcomes=list("BP class2"="BPclass2.factor"),crosstab_funcs=list(freq()),data=test.3)
+# neat_table(cont.table3.2)
 
 # Counts of patients on each antihypertensive medication grouped by visit and sorted (descending)
-unsorted<-medsum_full.3 %>% filter(VISIT%%10==0) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=n_rx~addNA(factor(med.corrected))+VISIT)
+unsorted<-medsum_full.3 %>% filter(VISIT%%10==0, CASEID %in% cases) %>% group_by(VISIT,med.corrected) %>% summarise(n_rx=n_distinct(CASEID)) %>% arrange(desc(n_rx),.by_group=T) %>% xtabs(formula=n_rx~addNA(factor(med.corrected))+VISIT)
 table4<-unsorted[sort(unsorted[,1], decreasing=T,index.return=T)$ix,] %>% addmargins()
-write.table(table4,row.names=T, col.names=NA,"visit_medcounts.csv")
+write.table(table4,row.names=T, col.names=NA,"visit_medcounts_cohort.csv")
 table4
 
-# counts of missing BP measurements
-# 1 = one of SBP or DBP are missing
-# 2 = both SBP and DBP are missing
-# 0 = SBP and DBP are measured
-table(is.na(test$SBP)+is.na(test$DBP))
-
 # overview of DDI
+write_csv(medsum_full.old %>% filter(VISIT==20, CASEID %in% as.numeric(unlist(cases_high_DDI)),DDI>=2) %>% select(CASEID,age,AVWEIGHT,gfr,med.corrected,DLYDOSE,std_dose,max_dose, max_dosev2,renal_adjust,DDI,DDIv2),"high_DDI_v20.csv")
+cases_high_DDI<-test.cohort %>% filter(VISIT==20, mean_DDI >=2) %>% select(CASEID)
+
 test.20<-test %>% filter(VISIT==20)
-test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$n_agents,test.20$BPclass.factor,test.20$BPclass2.factor))
-names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"n_agents","BPclass","BPclass2")
+test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$n_agents,test.20$BPclass2.factor))
+names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"n_agents","BPclass2")
 test.20.melted<-melt(test.20.DDI,id="n_agents")
 test.20.melted.filtered<-test.20.melted %>% filter(value!=0)
 test.20.melted.filtered$variable.factor<-as.factor(test.20.melted.filtered$variable)
@@ -426,6 +443,15 @@ test.20.melted.2$BPclass.factor<-factor(test.20.melted.2$BPclass, labels=c("NL",
 test.20.melted.2.filtered<-test.20.melted.2 %>% filter(!is.na(BPclass.factor))
 test.20.melted.2.filtered$variable.factor<-as.factor(test.20.melted.2.filtered$variable)
 ggplot(aes(y=value,fill=BPclass.factor,x=variable.factor),data=subset(test.20.melted.2.filtered, value<1.5))+labs(title="Drug Dose Index (DDI) vs BP class",x="DDI for medications 1-4", y="DDI (dose/max dose)")+labs(title="Drug Dose Index (DDI) vs BP class\n(Visit 20)",x="DDI 1-4", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="BP class"))+geom_boxplot()
+
+test.20<-test %>% filter(VISIT==20)
+test.20.DDI<-as_tibble(cbind(test.20$DDI_all[,1:4],test.20$BPclass2.factor))
+names(test.20.DDI)<-c(paste("DDI_",1:4,sep=''),"BPclass2")
+test.20.melted.2<-melt(test.20.DDI,id="BPclass2")
+test.20.melted.2$BPclass2.factor<-factor(test.20.melted.2$BPclass2, labels=c("NL","WCH","MH","AH"),ordered = TRUE)
+test.20.melted.2.filtered<-test.20.melted.2 %>% filter(!is.na(BPclass2.factor))
+test.20.melted.2.filtered$variable.factor<-as.factor(test.20.melted.2.filtered$variable)
+ggplot(aes(y=value,fill=BPclass2.factor,x=variable.factor),data=subset(test.20.melted.2.filtered, value<1.5))+labs(title="Drug Dose Index (DDI) vs BP class",x="DDI for medications 1-4", y="DDI (dose/max dose)")+labs(title="Drug Dose Index (DDI) vs BP class\n(Visit 20)",x="DDI 1-4", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="BP class2"))+geom_boxplot()
 
 # DDI vs nocturnal HTN
 test.20<-test %>% filter(VISIT==20)
@@ -447,6 +473,15 @@ test.20.melted.4.filtered<-test.20.melted.4 %>% filter(!is.na(BPclass.factor))
 test.20.melted.4.filtered$variable.factor<-as.factor(test.20.melted.4.filtered$variable)
 ggplot(aes(y=value,fill=BPclass.factor),data=subset(test.20.melted.4.filtered, value<3))+labs(title="Mean Drug Dose Index (DDI) vs BP class",x="BP class", y="mean DDI (dose/max dose)")+labs(title="Mean Drug Dose Index (DDI) vs BP class\n(Visit 20)",x="BP class", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="BP class"))+geom_boxplot()+scale_fill_brewer(palette="Spectral", direction=-1)
 
+test.20<-test %>% filter(VISIT==20,n_agents>=2)
+test.20.DDI<-as_tibble(cbind(test.20$mean_DDI,test.20$BPclass2.factor))
+names(test.20.DDI)<-c("mean_DDI","BPclass2")
+test.20.melted.4<-melt(test.20.DDI,id="BPclass2")
+test.20.melted.4$BPclass2.factor<-factor(test.20.melted.4$BPclass2, labels=c("NL","WCH","MH","AH"),ordered = TRUE)
+test.20.melted.4.filtered<-test.20.melted.4 %>% filter(!is.na(BPclass2.factor))
+test.20.melted.4.filtered$variable.factor<-as.factor(test.20.melted.4.filtered$variable)
+ggplot(aes(y=value,fill=BPclass2.factor),data=subset(test.20.melted.4.filtered, value<3))+labs(title="Mean Drug Dose Index (DDI) vs BP class",x="BP class", y="mean DDI (dose/max dose)")+labs(title="Mean Drug Dose Index (DDI) vs BP class\n(Visit 20)",x="BP class", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="BP class2"))+geom_boxplot()+scale_fill_brewer(palette="Spectral", direction=-1)
+
 # mean_DDI vs CKD stage
 test.20<-test %>% filter(VISIT==20, n_agents>=1)
 test.20.DDI<-as_tibble(cbind(test.20$mean_DDI,test.20$CKD_stage))
@@ -455,7 +490,7 @@ test.20.melted.5<-melt(test.20.DDI,id="CKD_stage")
 test.20.melted.5$CKD_stage.factor<-factor(test.20.melted.5$CKD_stage, labels=c(1:5),ordered = TRUE)
 test.20.melted.5.filtered<-test.20.melted.5 %>% filter(!is.na(CKD_stage.factor))
 test.20.melted.5.filtered$variable.factor<-as.factor(test.20.melted.5.filtered$variable)
-ggplot(aes(y=value,fill=CKD_stage.factor),data=subset(test.20.melted.5.filtered, value<3))+labs(title="Mean Drug Dose Index (DDI) vs CKD stage",x="CKD stage", y="mean DDI (dose/max dose)")+labs(title="Mean Drug Dose Index (DDI) vs BP class\n(Visit 20)",x="BP class", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="CKD stage"))+geom_boxplot()+scale_fill_brewer(palette="Spectral", direction=-1)
+ggplot(aes(y=value,fill=CKD_stage.factor),data=subset(test.20.melted.5.filtered, value<3))+labs(title="Mean Drug Dose Index (DDI) vs CKD stage",x="CKD stage", y="mean DDI (dose/max dose)")+labs(title="Mean Drug Dose Index (DDI) vs CKD stage\n(Visit 20)",x="BP class", y="DDI (dose/max dose)")+guides(fill=guide_legend(title="CKD stage"))+geom_boxplot()+scale_fill_brewer(palette="Spectral", direction=-1)
 
 # DDI vs LVMIp
 test.20<-test %>% filter(VISIT==20)
@@ -473,7 +508,233 @@ ggplot(aes(y=value,fill=LVMIp.factor,x=variable.factor),data=subset(test.20.melt
 # load visit 20 data
 load(file="test.20.RData")
 library(MASS)
-m<-polr(test.20$BPclass.factor~unlist(test.20$DDI_1)+unlist(test.20$DDI_2)+test.20$Upc+test.20$gfr+test.20$LVMIp+test.20$n_agents+test.20$BMIPCTAG+test.20$CKDONST+test.20$GHTOTINC+test.20$MALE1FE0+test.20$age,Hess=TRUE)
+m<-polr(test.20$BPclass2.factor~unlist(test.20$DDI_1)+unlist(test.20$DDI_2)+test.20$Upc+test.20$gfr+test.20$n_agents+test.20$BMIPCTAG+test.20$CKDONST+test.20$GHTOTINC+test.20$MALE1FE0+test.20$age,Hess=TRUE)
 summary(m)
+
+# relationship between mean_DDI and n_agents (ANA)
+test.20.filtered<-test.20 %>% filter(mean_DDI<=3, !is.na(n_agents), n_agents>0)
+group_by(test.20.filtered, n_agents) %>%
+  summarise(
+    count = n(),
+    mean = mean(mean_DDI, na.rm = TRUE),
+    sd = sd(mean_DDI, na.rm = TRUE)
+    )
+# Compute the analysis of variance
+res.aov <- aov(mean_DDI ~ n_agents, data = test.20.filtered)
+# Summary of the analysis
+summary(res.aov)
+ggline(test.20.filtered, x = "n_agents", y = "mean_DDI", 
+               add = c("mean_se", "jitter"), 
+               order = c(1:4),
+               ylab = "mean_DDI", xlab = "n_agents")
+
+# looking at strata based on n_agents
+# n_agents=1
+test.20.filtered_n1<-test.20 %>% filter(mean_DDI<=3, !is.na(BPclass2.factor),n_agents==1)
+group_by(test.20.filtered_n1, BPclass2.factor) %>%
+  summarise(
+    count = n(),
+    mean = mean(mean_DDI, na.rm = TRUE),
+    sd = sd(mean_DDI, na.rm = TRUE)
+  )
+# Compute the analysis of variance
+res.aov <- aov(mean_DDI ~ BPclass2.factor, data = test.20.filtered_n1)
+# Summary of the analysis for n_agents=1
+summary(res.aov)
+ggline(test.20.filtered_n1, x = "BPclass2.factor", y = "mean_DDI", 
+       add = c("mean_se", "jitter"), 
+       order = c("NL","WCH","MH","AH"),
+       ylab = "mean_DDI", xlab = "BPclass2.factor")
+
+# within visit20, n_agents=1, compare mean_DDI for MH vs AH
+test.20.filtered_n1.2<-test.20 %>% filter(mean_DDI<=3,n_agents==1,BPclass2.factor=="MH"|BPclass2.factor=="AH")
+group_by(test.20.filtered_n1.2, BPclass2.factor) %>%
+  summarise(
+    count = n(),
+    mean = mean(mean_DDI, na.rm = TRUE),
+    sd = sd(mean_DDI, na.rm = TRUE)
+  )
+# Compute the analysis of variance
+res.aov <- aov(mean_DDI ~ BPclass2.factor, data = test.20.filtered_n1.2)
+# Summary of the analysis for n_agents=1
+summary(res.aov)
+ggline(test.20.filtered_n1.2, x = "BPclass2.factor", y = "mean_DDI", 
+       add = c("mean_se", "jitter"), 
+       order = c("MH","AH"),
+       ylab = "mean_DDI", xlab = "BPclass2.factor")
+
+# ----------
+# define cohort (n=497) to be used for all subsequent analysis
+# inclusion criteria based on VISIT 20:
+# successfull ABPM
+# available data for: SCR, AVWEIGHT,AVHEIGHT
+
+cohort<-test %>% filter(VISIT==20,ABPMSUCCESS==1, !is.na(SCR),!is.na(AVHEIGHT),!is.na(AVWEIGHT)) %>% select(CASEID) %>% unlist %>% as.numeric()
+library(RColorBrewer)
+# histogram by medication class and CKD stage
+# rename BPmedgroup for those not taking BP meds to "none"
+BPmedgroups<-levels(addNA(medsum_full.old$BPmedgroup))
+BPmedgroups[14]<-"none"
+medsum_full.old$BPmedgroup.2<-factor(medsum_full.old$BPmedgroup, levels=BPmedgroups)
+medsum_full.old$BPmedgroup.2[which(is.na(medsum_full.old$BPmedgroup.2))]<-"none"
+g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases), aes(CKD_stage))
+colourCount = 14
+getPalette = colorRampPalette(brewer.pal(14, "Set2"))
+g+
+  geom_bar(aes(fill=BPmedgroup.2),width=0.5)+
+  scale_fill_manual(values = colorRampPalette(brewer.pal(14, "Set1"))(colourCount))+
+  theme(axis.text.x=element_text(vjust=0.6))+
+  labs(title="Histogram on categorical variable", subtitle="BP medication class by CKD stage (VISIT 20)")+
+  guides(fill=guide_legend(title="BP med class"))
+
+# ordered bar plot of medications by frequency at visit 20
+g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases,!is.na(med.corrected)), aes(x=reorder(med.corrected,med.corrected,function(x)-length(x))))
+g+
+  geom_bar(aes(fill=CKD_stage),width=0.5)+
+  scale_fill_manual(values = colorRampPalette(rev(brewer.pal(5, "Set1")))(5))+
+  labs(title="Frequency of medications at visit 20", caption="source:CKiD",x="Medication name")+
+  theme(axis.text.x=element_text(angle=65,vjust=0.6))
+
+# number of agents and BP med class at V20
+colourCount=14
+g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases,!is.na(n_agents)), aes(n_agents))
+g+
+  geom_bar(aes(fill=reorder(BPmedgroup.2,BPmedgroup.2,function(x) - length(x))),width=0.5)+
+  scale_fill_manual(values = colorRampPalette(brewer.pal(14, "Set1"))(colourCount))+
+  labs(title="BP medication class by number of agents",subtitle="(VISIT 20)", caption="source:CKiD",x="number of BP agents")+
+  guides(fill=guide_legend(title="BP medication class"))
+
+# number of agents and BP status at V20
+colourCount = 4
+g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases,!is.na(n_agents), !is.na(BPclass2.factor)), aes(n_agents))
+g+
+  geom_bar(aes(fill=BPclass2.factor),width=0.5)+
+  scale_fill_manual(labels=c("Normotensive","White-coat HTN","Masked HTN","Ambulatory HTN"),values = colorRampPalette(rev(brewer.pal(4, "Spectral")))(colourCount))+
+  labs(title="BP status by number of agents",subtitle="(VISIT 20)", caption="source:CKiD",x="number of BP agents")+
+  guides(fill=guide_legend(title="BP status"))
+
+# CKD stage and BP status at V20      
+colourCount = 4
+g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases, !is.na(BPclass2.factor)), aes(CKD_stage))
+g+
+  geom_bar(aes(fill=BPclass2.factor),width=0.5)+
+  scale_fill_manual(labels=c("Normotensive","White-coat HTN","Masked HTN","Ambulatory HTN"),values = colorRampPalette(rev(brewer.pal(4, "Spectral")))(colourCount))+
+  labs(title="BP status by CKD stage",subtitle="(VISIT 20)", caption="source:CKiD",x="CKD stage")+
+  guides(fill=guide_legend(title="BP status"))
+
+# BP status and proteinuria at V20      
+colourCount = 4
+g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases, !is.na(BPclass2.factor)), aes(Upc.factor))
+g+
+  geom_bar(aes(fill=BPclass2.factor),width=0.5)+
+  scale_fill_manual(labels=c("Normotensive","White-coat HTN","Masked HTN","Ambulatory HTN"),values = colorRampPalette(rev(brewer.pal(4, "Spectral")))(colourCount))+
+  labs(title="BP status by severity of proteinuria (VISIT 20)",subtitle="(Up:c ratio, mg/mg cr) \n[0-0.5=normal,0.5-1=mild,1-2=moderate,>2=severe]", caption="source:CKiD",x="Degree of Proteinuria")+
+  guides(fill=guide_legend(title="BP status"))
+
+# BP status and LVMIp at V20
+colourCount = 6
+g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases, !is.na(BPclass2.factor),!is.na(LVMIp)), aes(BPclass2.factor))
+g+
+  geom_bar(aes(fill=LVMIp.factor),width=0.5)+
+  scale_fill_manual(values = colorRampPalette(rev(brewer.pal(6, "Spectral")))(colourCount))+
+  labs(title="LVMI percentile by BP status (VISIT 20)",subtitle="LVMI %-ile (Khouri et al, 2009)", caption="sources: Khoury PR, Mitsnefes M, Daniels SR, Kimball TR. \n Age-Specific Reference Intervals for Indexed Left Ventricular Mass in Children. \n Journal of the American Society of Echocardiography. 2009;22(6):709-714 \n and CKiD",x="BP status")+
+  guides(fill=guide_legend(title="LVMI percentile"))
+
+# n_agents and LVMIp at V20
+colourCount = 6
+g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases, !is.na(n_agents),!is.na(LVMIp)), aes(n_agents))
+g+
+  geom_bar(aes(fill=LVMIp.factor),width=0.5)+
+  scale_fill_manual(values = colorRampPalette(rev(brewer.pal(6, "Spectral")))(colourCount))+
+  labs(title="LVMI percentile by number of BP agents (VISIT 20)",subtitle="LVMI %-ile (Khouri et al, 2009)", caption="sources: Khoury PR, Mitsnefes M, Daniels SR, Kimball TR. \n Age-Specific Reference Intervals for Indexed Left Ventricular Mass in Children. \n Journal of the American Society of Echocardiography. 2009;22(6):709-714 \n and CKiD",x="# BP medications")+
+  guides(fill=guide_legend(title="LVMI percentile"))
+
+# timing of ABPM and visit number
+g<-ggplot(test %>% filter(CASEID %in% cases),aes(ABPM_DATE))
+g+geom_density(aes(fill=VISIT.factor),alpha=0.8)+
+  labs(title="ABPM date grouped by visit number", caption="source: CKiD",x="ABPM date (yrs from entry into CKiD)",fill="VISIT")
+
+# -----------
+# correlation between n_agents and BP status
+dt <- table(test.cohort$n_agents,test.cohort$BPclass2.factor, exclude = c(-1,NA))
+chisq <- chisq.test(dt)
+chisq
+corrplot(chisq$residuals, is.cor = FALSE, title="chi-squared test residuals for\n BP class vs n_agents\n (X-squared = 27.946, df = 12, p-value = 0.005634)",addCoef.col = 1,mar=c(1,0,2.5,1),number.cex=0.6)
+
+# standard dose by medication
+temp<-medsum_full.old %>% filter(CASEID %in% cases, VISIT==20)
+g<-ggplot(temp, aes(std_dose))
+colourCount=length(unique(temp$med.corrected))
+g+ geom_density(aes(fill=factor(med.corrected)),alpha=0.5)+
+  scale_fill_manual(values = colorRampPalette(rev(brewer.pal(colourCount, "Spectral")))(colourCount))+
+  labs(title="Standardized dose (mg/kg) vs BP medication",
+       subtitle="Std dose grouped by medication",
+       caption="source:CKiD",
+       x="Standardized dose (mg/kg)",
+       fill="BP medication")+
+  coord_cartesian(xlim = c(0,1.2))
+
+# correlation between factors:
+library(ggcorplot)
+temp<-test.cohort %>% filter(VISIT==20) %>% select(n_agents,Upc,gfr,BMIPCTAG,age,MALE1FE0,BPclass2,SBPZAGH2017,DBPZAGH2017,LVMIp,CKDONST, GHTOTINC)
+corr<-round(cor(temp,use="complete.obs"),2)
+ggcorrplot(corr,hc.order=TRUE,
+           type="lower",
+           lab=TRUE,
+           lab_size=3,
+           method="circle",
+           colors=c("tomato2","white","spring green3"),
+           title="Correlogram of Visit 20 cohort",
+           ggtheme=theme_bw)
+
+# distribution of mean_DDI for visit 20
+temp<-test.cohort %>% filter(VISIT==20,!is.na(mean_DDI)) %>% select(mean_DDI) %>% unlist %>% as.numeric()
+hist(temp,axes=FALSE,breaks=150,xlim=c(0.1,2),main="Histogram of mean DDI (VISIT 20)", xlab="mean DDI")
+lines(density(temp,adjust=0.5,weights=rep(18/length(temp),length(temp))))
+axis(1, lwd = 2, xaxp = c(-0.0, 2, 20))
+axis(2,lwd=2,xaxp=c(0,30,5))
+
+# distribution of mean_DDI by n_agents (V20)
+temp<-test.cohort %>% filter(VISIT==20,!is.na(mean_DDI)) %>% select(mean_DDI,n_agents)
+temp$n_agents.factor<-factor(temp$n_agents)
+g<-ggplot(temp,aes(mean_DDI))
+g+geom_density(aes(fill=n_agents.factor),alpha=0.8)+
+  labs(title="Distribution of mean_DDI grouped by n_agents",
+       subtitle="(VISIT 20)",
+       caption="Source:CKiD",
+       x="mean DDI",
+       fill="# BP meds")
+
+g<-ggplot(temp,aes(mean_DDI))+scale_fill_brewer(palette="Spectral")
+g+geom_histogram(aes(fill=n_agents.factor),
+                 binwidth=0.1,
+                 col="black",
+                 size=0.1)+
+  labs(title="Distribution of mean_DDI by n_agents",
+       subtitle="(VISIT 20)")
+
+# distribution of mean_DDI by BPstatus (V20)
+temp<-test.cohort %>% filter(VISIT==20,!is.na(mean_DDI),!is.na(BPclass2.factor)) %>% select(mean_DDI,BPclass2.factor)
+g<-ggplot(temp,aes(mean_DDI))
+g+geom_density(aes(fill=BPclass2.factor), adjust=0.25,alpha=0.8)+
+  labs(title="Distribution of mean_DDI grouped by BP status",
+       subtitle="(VISIT 20)",
+       caption="Source:CKiD",
+       x="mean DDI",
+       fill="BP status")+
+coord_cartesian(xlim = c(0,1.2))
+
+write_csv(medsum_full.old %>% filter(VISIT==20, CASEID %in% as.numeric(unlist(cases_high_DDI)),DDI>=2) %>% select(CASEID,age,AVWEIGHT,gfr,med.corrected,DLYDOSE,std_dose,max_dose, max_dosev2,renal_adjust,DDI,DDIv2),"high_DDI_v20.csv")
+
+
+## Linear Regression modeling for DDI
+# set up: check DDI for normality
+test.cohort.filtered<-test.cohort %>% filter(mean_DDI<=3)
+test.cohort.filtered$mean_DDI.transformed<-log(test.cohort.filtered$mean_DDI)
+par(mfrow=c(2,1))
+qqnorm(test.cohort$mean_DDI, pch = 1, frame = FALSE,main="mean DDI")
+qqline(test.cohort$mean_DDI, col = "steelblue", lwd = 2)
+qqnorm(test.cohort$mean_DDI, pch = 1, frame = FALSE,main="transformed: sqrt(mean DDI)")
+qqline(test.cohort$mean_DDI, col = "steelblue", lwd = 2)
 
 

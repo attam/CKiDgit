@@ -15,20 +15,35 @@
 # read the reference data on drug max doses
 dose_ref <- read_csv("dosing_ref_antiHTN.csv")
 
-DDI <-function(dose, drug,weight,gfr) {
+DDI <-function(dose, drug,weight,gfr,max_dose=NULL,renal=NULL,type=NULL) {
   drug<-toupper(drug)
   if (dose<=0|is.na(match(drug[1],dose_ref$Drug))) return(NA)
   dose_ref<-dose_ref %>% filter(Drug==drug)
-  
+  dose_adj<-1
   # adjustment for decreased GFR
   if (!is.na(dose_ref[4])) {
-    dose_adj<-1
   if (drug=="LISINOPRIL") dose_adj<-ifelse(between(gfr,10,50), 0.5,ifelse(gfr<10,0.25,1))
-  if (drug=="CAPTOPRIL") dose_adj<-ifelse(between(gfr,10,50), 0.75,ifelse(gfr<10,0.5,1))
+  if (drug=="ENALAPRIL"|drug=="CAPTOPRIL") dose_adj<-ifelse(between(gfr,10,50), 0.75,ifelse(gfr<10,0.5,1))
   dose_ref[2:3]<-dose_ref[2:3]*dose_adj
   }
-  if (is.na(dose_ref[2])) {DDI<-dose/dose_ref[3]} else {
-  DDI<-ifelse(weight*dose_ref[2]>dose_ref[3], dose/dose_ref[3],(dose/weight)/dose_ref[2])}
-  names(DDI)<-"DDI"
-  return (unlist(DDI))
-}
+  if (is.na(dose_ref[2])) {
+    DDI<-dose/dose_ref[3]
+    max.dose<-dose_ref[3]
+    } else {
+    if(!is.null(type)){
+      temp.min<-unlist(c(dose/dose_ref[3],(dose/weight)/dose_ref[2]))
+      which_temp.min<-which.min(temp.min)
+      DDI<-ifelse(weight*dose_ref[2]>dose_ref[3],min(temp.min),dose/dose_ref[3])
+      max.dose<-ifelse(weight*dose_ref[2]>dose_ref[3],ifelse(which_temp.min==1,dose_ref[3],dose_ref[2]),dose_ref[3])
+      } else {
+        DDI<-ifelse(weight*dose_ref[2]>dose_ref[3], dose/dose_ref[3],(dose/weight)/dose_ref[2])
+        max.dose<-ifelse(weight*dose_ref[2]>dose_ref[3],dose_ref[3],dose_ref[2])
+      }
+    names(DDI)<-"DDI"
+  }
+  out<-NA
+  if (!is.null(max_dose)) out<-max.dose
+  if (!is.null(renal)) out<-dose_adj
+  if (is.null(max_dose)&is.null(renal)) out<-unlist(DDI)
+  return (out)
+          }

@@ -1,5 +1,5 @@
 Drug,max_mgkg,max_mg,renal_adj,renal_comment,other
-ENALAPRIL,0.58,40,,,
+ENALAPRIL,0.58,40,75,75% if GFR 10-50; 50% if GFR<10,
 LISINOPRIL,0.6,40,50,50% if GFR 10-50; 25% if GFR<10,
 AMLODIPINE,0.6,10,,,
 LOSARTAN,1.4,100,,avoid if GFR<30,

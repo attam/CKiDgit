@@ -1,0 +1,464 @@
+Linear regression:
+DV: SBP z score 
+explanatory Vs:
+- mean_DDI
+- n_agents
+- Upc
+- sex
+- age
+- gfr
+- total income
+- years since CKD onset
+- BMI %-ile
+
+[summary: when looking at all patients at visit 20, mean_DDI is not significant predictor of SBP or DBPz;
+but it is significant in those patients with a single anti-HTN agent.
+There is a positive association between mean_DDI and SBP (p=0.06) and DBPz (p=0.013), the latter of which is significant
+When looking at individual drugs, ranking DDI from highest to lowest for each patient,
+- the average DDI for the first drug (DDI_1) is 40% (SD 34%) of maximal dose on average (n=329)
+- DDI_1 is positively associated with SBPz (p=0.06) and DBPz (p=0.013) - so the DDI_1 increases with BPz
+- the average DDI for the second drug is only 57% (SD 39%) of maximal dose on average (n=100)
+- in contrast to DDI_1, DDI_2 is a significant negative predictor of SBPz (p=0.032)]
+- this means that DDI_2 decreases with increasing SBPz]
+
+Call:
+lm(formula = SBPZAGH2017 ~ mean_DDI + n_agents + Upc + MALE1FE0 + 
+    age + gfr + GHTOTINC + CKDONST + BMIPCTAG, data = test.20)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.98976 -0.73221  0.01474  0.72044  2.40395 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.902609   0.176528   5.113 4.12e-07 ***
+mean_DDI     0.006226   0.090186   0.069  0.94498    
+n_agents     0.141335   0.054148   2.610  0.00925 ** 
+Upc          0.105993   0.022353   4.742 2.58e-06 ***
+MALE1FE0     0.058306   0.081014   0.720  0.47195    
+age         -0.067133   0.010920  -6.147 1.34e-09 ***
+gfr         -0.003433   0.001772  -1.937  0.05313 .  
+GHTOTINC    -0.018573   0.010667  -1.741  0.08211 .  
+CKDONST     -0.006593   0.009760  -0.676  0.49954    
+BMIPCTAG     0.004397   0.001310   3.357  0.00083 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 1.024 on 684 degrees of freedom
+  (86 observations deleted due to missingness)
+Multiple R-squared:   0.13,	Adjusted R-squared:  0.1185 
+F-statistic: 11.35 on 9 and 684 DF,  p-value: < 2.2e-16
+
+*** same as above but looking at DBP ***
+Call:
+lm(formula = DBPZAGH2017 ~ mean_DDI + n_agents + Upc + MALE1FE0 + 
+    age + gfr + GHTOTINC + CKDONST + BMIPCTAG, data = test.20)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-3.04541 -0.71434 -0.09729  0.78881  2.28458 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  1.081044   0.173014   6.248 7.29e-10 ***
+mean_DDI     0.025209   0.088391   0.285   0.7756    
+n_agents    -0.047757   0.053070  -0.900   0.3685    
+Upc          0.119992   0.021908   5.477 6.08e-08 ***
+MALE1FE0     0.053602   0.079401   0.675   0.4999    
+age         -0.051170   0.010703  -4.781 2.14e-06 ***
+gfr         -0.002526   0.001737  -1.454   0.1464    
+GHTOTINC    -0.020083   0.010455  -1.921   0.0552 .  
+CKDONST     -0.004736   0.009565  -0.495   0.6207    
+BMIPCTAG     0.001306   0.001284   1.017   0.3094    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 1.004 on 684 degrees of freedom
+  (86 observations deleted due to missingness)
+Multiple R-squared:  0.1003,	Adjusted R-squared:  0.08841 
+F-statistic: 8.468 on 9 and 684 DF,  p-value: 4.647e-12
+-----
+Only patients with n_agents = 1
+
+Call:
+lm(formula = SBPZAGH2017 ~ mean_DDI + n_agents + Upc + MALE1FE0 + 
+    age + gfr + GHTOTINC + CKDONST + BMIPCTAG, data = test.20.n1)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.81027 -0.69968 -0.04212  0.73736  2.32514 
+
+Coefficients: (1 not defined because of singularities)
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.8003791  0.3069569   2.607  0.00956 ** 
+mean_DDI     0.2195376  0.1198208   1.832  0.06788 .  
+n_agents            NA         NA      NA       NA    
+Upc          0.1544807  0.0354055   4.363 1.75e-05 ***
+MALE1FE0     0.0627375  0.1185767   0.529  0.59712    
+age         -0.0813931  0.0167995  -4.845 2.00e-06 ***
+gfr          0.0003432  0.0026579   0.129  0.89733    
+GHTOTINC    -0.0150837  0.0167349  -0.901  0.36811    
+CKDONST     -0.0167171  0.0134115  -1.246  0.21353    
+BMIPCTAG     0.0029334  0.0018892   1.553  0.12151    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 1.005 on 310 degrees of freedom
+  (40 observations deleted due to missingness)
+Multiple R-squared:  0.1359,	Adjusted R-squared:  0.1136 
+F-statistic: 6.093 on 8 and 310 DF,  p-value: 2.703e-07
+
+*** same as above but looking at DBP ***
+Call:
+lm(formula = DBPZAGH2017 ~ mean_DDI + n_agents + Upc + MALE1FE0 + 
+    age + gfr + GHTOTINC + CKDONST + BMIPCTAG, data = test.20.n1)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.19557 -0.67269 -0.08153  0.65969  2.31176 
+
+Coefficients: (1 not defined because of singularities)
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.6191349  0.2912789   2.126 0.034329 *  
+mean_DDI     0.2847040  0.1137009   2.504 0.012794 *  
+n_agents            NA         NA      NA       NA    
+Upc          0.1242521  0.0335971   3.698 0.000257 ***
+MALE1FE0     0.1465260  0.1125203   1.302 0.193808    
+age         -0.0479950  0.0159414  -3.011 0.002821 ** 
+gfr          0.0011258  0.0025222   0.446 0.655656    
+GHTOTINC    -0.0245915  0.0158802  -1.549 0.122506    
+CKDONST     -0.0113388  0.0127265  -0.891 0.373640    
+BMIPCTAG    -0.0003356  0.0017927  -0.187 0.851645    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9541 on 310 degrees of freedom
+  (40 observations deleted due to missingness)
+Multiple R-squared:  0.1021,	Adjusted R-squared:  0.07893 
+F-statistic: 4.406 on 8 and 310 DF,  p-value: 4.594e-05
+
+** looking at DDI_1 and DDI_2 **
+Call:
+lm(formula = SBPZAGH2017 ~ DDI_1 + DDI_2 + n_agents + Upc + MALE1FE0 + 
+    age + gfr + GHTOTINC + CKDONST + BMIPCTAG, data = test.20)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.57077 -0.69346  0.03733  0.70552  2.85523 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -0.440177   0.744259  -0.591 0.555699    
+DDI_1        0.075721   0.113007   0.670 0.504518    
+DDI_2       -0.731004   0.335723  -2.177 0.032038 *  
+n_agents     0.668729   0.184400   3.627 0.000473 ***
+Upc          0.083744   0.036486   2.295 0.024018 *  
+MALE1FE0    -0.088704   0.237965  -0.373 0.710194    
+age         -0.048447   0.030400  -1.594 0.114477    
+gfr         -0.000199   0.005365  -0.037 0.970496    
+GHTOTINC    -0.042858   0.031906  -1.343 0.182526    
+CKDONST      0.006454   0.025493   0.253 0.800718    
+BMIPCTAG     0.010208   0.004113   2.482 0.014913 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 1.123 on 91 degrees of freedom
+  (678 observations deleted due to missingness)
+Multiple R-squared:  0.2926,	Adjusted R-squared:  0.2148 
+F-statistic: 3.763 on 10 and 91 DF,  p-value: 0.0002914
+
+** DBP **
+Call:
+lm(formula = DBPZAGH2017 ~ DDI_1 + DDI_2 + n_agents + Upc + MALE1FE0 + 
+    age + gfr + GHTOTINC + CKDONST + BMIPCTAG, data = test.20)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.93263 -0.74032 -0.04614  0.70686  2.19016 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)   
+(Intercept) -0.0534005  0.7429321  -0.072  0.94286   
+DDI_1        0.0434754  0.1128053   0.385  0.70084   
+DDI_2       -0.4853819  0.3351247  -1.448  0.15095   
+n_agents     0.3855367  0.1840715   2.094  0.03900 * 
+Upc          0.1086389  0.0364208   2.983  0.00366 **
+MALE1FE0     0.0120769  0.2375412   0.051  0.95956   
+age         -0.0118813  0.0303456  -0.392  0.69632   
+gfr         -0.0041515  0.0053553  -0.775  0.44023   
+GHTOTINC    -0.0387726  0.0318489  -1.217  0.22660   
+CKDONST      0.0007936  0.0254474   0.031  0.97519   
+BMIPCTAG     0.0032633  0.0041061   0.795  0.42883   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 1.121 on 91 degrees of freedom
+  (678 observations deleted due to missingness)
+Multiple R-squared:  0.1872,	Adjusted R-squared:  0.09793 
+F-statistic: 2.096 on 10 and 91 DF,  p-value: 0.03251
+
+--------
+Ordinal Logistic regression model
+
+Visit 20
+Dependent variable:
+- BP class
+Independent variable:
+- DDI 1
+- DDI 2
+- Upc
+- gfr
+- n_agents
+- BMI %ile
+- years since CKD onset
+- total income
+- sex
+- age
+
+Call:
+polr(formula = test.20$BPclass2.factor ~ unlist(test.20$DDI_1) + 
+    unlist(test.20$DDI_2) + test.20$Upc + test.20$gfr + test.20$n_agents + 
+    test.20$BMIPCTAG + test.20$CKDONST + test.20$GHTOTINC + test.20$MALE1FE0 + 
+    test.20$age, Hess = TRUE)
+
+Coefficients:
+                          Value Std. Error t value
+unlist(test.20$DDI_1)  0.281037    0.18342  1.5322
+unlist(test.20$DDI_2) -1.836854    0.65592 -2.8004
+test.20$Upc            0.025443    0.13927  0.1827
+test.20$gfr           -0.005964    0.01020 -0.5848
+test.20$n_agents       0.934427    0.41305  2.2623
+test.20$BMIPCTAG       0.006448    0.00851  0.7577
+test.20$CKDONST        0.014772    0.04923  0.3001
+test.20$GHTOTINC      -0.075483    0.05541 -1.3622
+test.20$MALE1FE0       0.127397    0.46511  0.2739
+test.20$age            0.010864    0.05570  0.1950
+
+Intercepts:
+       Value   Std. Error t value
+NL|WCH  0.4019  1.5286     0.2629
+WCH|MH  0.6139  1.5275     0.4019
+MH|AH   2.3645  1.5438     1.5317
+
+Residual Deviance: 176.5577 
+AIC: 202.5577 
+(701 observations deleted due to missingness)
+> coeftest(m)
+
+z test of coefficients:
+
+                        Estimate Std. Error z value Pr(>|z|)   
+unlist(test.20$DDI_1)  0.2810368  0.1834180  1.5322 0.125468   
+unlist(test.20$DDI_2) -1.8368541  0.6559246 -2.8004 0.005104 **
+test.20$Upc            0.0254430  0.1392693  0.1827 0.855042   
+test.20$gfr           -0.0059643  0.0101994 -0.5848 0.558698   
+test.20$n_agents       0.9344275  0.4130500  2.2623 0.023681 * 
+test.20$BMIPCTAG       0.0064484  0.0085104  0.7577 0.448629   
+test.20$CKDONST        0.0147723  0.0492263  0.3001 0.764109   
+test.20$GHTOTINC      -0.0754829  0.0554111 -1.3622 0.173124   
+test.20$MALE1FE0       0.1273966  0.4651145  0.2739 0.784159   
+test.20$age            0.0108644  0.0557046  0.1950 0.845365   
+NL|WCH                 0.4018777  1.5286173  0.2629 0.792626   
+WCH|MH                 0.6138811  1.5275344  0.4019 0.687774   
+MH|AH                  2.3645174  1.5437620  1.5317 0.125607   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+interpretation of coefficients:
+- values less than 0 have OR <1
+- values >0 have OR >1
+- as DDI_2 increases by one unit, the log-odds of moving from category BP class NL to any of the others decreases by -1.8
+- if the log odds cross the threshold of 0.40187, the predicted BP class will be WCH, etc
+
+
+ANOVA: Visit 20, n_agents>0
+IV: mean_DDI vs DV: n_agents
+> test.20.filtered<-test.20 %>% filter(mean_DDI<=3, !is.na(n_agents), n_agents>0)
+> group_by(test.20.filtered, n_agents) %>%
++   summarise(
++     count = n(),
++     mean = mean(mean_DDI, na.rm = TRUE),
++     sd = sd(mean_DDI, na.rm = TRUE)
++     )
+# A tibble: 4 x 4
+  n_agents count  mean    sd
+     <int> <int> <dbl> <dbl>
+1        1   329 0.405 0.344
+2        2   100 0.569 0.394
+3        3    17 0.668 0.655
+4        4    10 0.719 0.576
+Warning message:
+Grouping rowwise data frame strips rowwise nature 
+> # Compute the analysis of variance
+> res.aov <- aov(mean_DDI ~ n_agents, data = test.20.filtered)
+> # Summary of the analysis
+> summary(res.aov)
+             Df Sum Sq Mean Sq F value   Pr(>F)    
+n_agents      1   3.43   3.429   24.25 1.19e-06 ***
+Residuals   454  64.20   0.141                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+** interpretation: n_agents has a significant influence on average DDI at visit 20 (ie, the mean DDI for n_agents = 1, 2, 3 and 4 are not equal)
+view graph to show relationship
+----
+ANOVA: Visit 20, n_agents=1: mean_DDI vs BPclass
+> # looking at strata based on n_agents
+> # n_agents=1
+> test.20.filtered_n1<-test.20 %>% filter(mean_DDI<=3, !is.na(BPclass2.factor),n_agents==1)
+> group_by(test.20.filtered_n1, BPclass2.factor) %>%
++   summarise(
++     count = n(),
++     mean = mean(mean_DDI, na.rm = TRUE),
++     sd = sd(mean_DDI, na.rm = TRUE)
++   )
+# A tibble: 4 x 4
+  BPclass2.factor count  mean    sd
+  <ord>           <int> <dbl> <dbl>
+1 NL                113 0.396 0.317
+2 WCH                 6 0.271 0.149
+3 MH                113 0.375 0.296
+4 AH                 38 0.550 0.439
+Warning message:
+Grouping rowwise data frame strips rowwise nature 
+> # Compute the analysis of variance
+> res.aov <- aov(mean_DDI ~ BPclass2.factor, data = test.20.filtered_n1)
+> # Summary of the analysis for n_agents=1
+> summary(res.aov)
+                 Df Sum Sq Mean Sq F value Pr(>F)  
+BPclass2.factor   3  1.022  0.3406   3.199 0.0239 *
+Residuals       266 28.320  0.1065                 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+** interpretation: In patients taking 1 anti-HTN agent, the mean DDI for each BP class are NOT equal (see graph)
+-------
+Compare mean_DDI between MH vs AH (using t-test)
+	Welch Two Sample t-test
+
+data:  test.20.filtered_n1.2$mean_DDI[which(test.20.filtered_n1.2$BPclass2.factor ==  and test.20.filtered_n1.2$mean_DDI[which(test.20.filtered_n1.2$BPclass2.factor ==     "MH")] and     "AH")]
+t = -2.2935, df = 48.834, p-value = 0.02616
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -0.32878259 -0.02168024
+sample estimates:
+mean of x mean of y 
+0.3752078 0.5504392
+x=MH, y=AH
+** interpretation: DDI is significantly lower in Patients with MH vs AH
+
+----
+Looking only at patients with n_agents=2
+> test.20.filtered_n2<-test.20 %>% filter(mean_DDI<=3, !is.na(BPclass2.factor),n_agents==2)
+> group_by(test.20.filtered_n2, BPclass2.factor) %>%
++     summarise(
++         count = n(),
++         mean = mean(mean_DDI, na.rm = TRUE),
++         sd = sd(mean_DDI, na.rm = TRUE)
++     )
+# A tibble: 3 x 4
+  BPclass2.factor count  mean    sd
+  <ord>           <int> <dbl> <dbl>
+1 NL                 27 0.554 0.414
+2 MH                 31 0.596 0.409
+3 AH                 20 0.656 0.404
+Warning message:
+Grouping rowwise data frame strips rowwise nature 
+> # Compute the analysis of variance
+> res.aov <- aov(mean_DDI ~ BPclass2.factor, data = test.20.filtered_n2)
+> # Summary of the analysis for n_agents=2
+> summary(res.aov)
+                Df Sum Sq Mean Sq F value Pr(>F)
+BPclass2.factor  2  0.119 0.05951   0.355  0.702
+Residuals       75 12.574 0.16765               
+> ggline(test.20.filtered_n2, x = "BPclass2.factor", y = "mean_DDI", 
++        add = c("mean_se", "jitter"), 
++        order = c("NL","WCH","MH","AH"),
++        ylab = "mean_DDI", xlab = "BPclass2.factor")
+see graph (not significant)
+-------------
+LVMIp
+
+Call:
+lm(formula = LVMIp ~ DDI_1 + DDI_2 + n_agents + Upc + MALE1FE0 + 
+    age + gfr + GHTOTINC + CKDONST + BMIPCTAG, data = test.20)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-65.358 -18.505   3.105  16.707  42.122 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)  
+(Intercept) 38.41622   19.15557   2.005   0.0486 *
+DDI_1        2.93765    2.71054   1.084   0.2820  
+DDI_2       -9.57666    8.70966  -1.100   0.2751  
+n_agents    11.78588    5.19986   2.267   0.0263 *
+Upc          0.09818    0.88499   0.111   0.9120  
+MALE1FE0     1.19991    6.14202   0.195   0.8456  
+age         -0.72926    0.75515  -0.966   0.3373  
+gfr         -0.24116    0.13406  -1.799   0.0761 .
+GHTOTINC    -0.89833    0.92099  -0.975   0.3325  
+CKDONST     -1.36623    0.66293  -2.061   0.0428 *
+BMIPCTAG     0.28267    0.11197   2.524   0.0137 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 26.34 on 74 degrees of freedom
+  (695 observations deleted due to missingness)
+Multiple R-squared:  0.2426,	Adjusted R-squared:  0.1403 
+F-statistic: 2.371 on 10 and 74 DF,  p-value: 0.01707
+
+Call:
+polr(formula = test.20$LVMIp.factor ~ unlist(test.20$DDI_1) + 
+    unlist(test.20$DDI_2) + test.20$Upc + test.20$gfr + test.20$n_agents + 
+    test.20$BMIPCTAG + test.20$CKDONST + test.20$GHTOTINC + test.20$MALE1FE0 + 
+    test.20$age, Hess = TRUE)
+
+Coefficients:
+                         Value Std. Error  t value
+unlist(test.20$DDI_1)  0.17476   0.160717  1.08741
+unlist(test.20$DDI_2) -1.08327   0.597354 -1.81346
+test.20$Upc            0.04469   0.067757  0.65963
+test.20$gfr           -0.01368   0.009814 -1.39421
+test.20$n_agents       1.24939   0.437571  2.85527
+test.20$BMIPCTAG       0.01959   0.007978  2.45490
+test.20$CKDONST       -0.10687   0.048116 -2.22099
+test.20$GHTOTINC      -0.11109   0.075082 -1.47953
+test.20$MALE1FE0      -0.04026   0.440683 -0.09135
+test.20$age           -0.04135   0.055547 -0.74440
+
+Intercepts:
+      Value   Std. Error t value
+10|25 -0.0715  1.5014    -0.0476
+25|50  1.0186  1.4772     0.6895
+50|75  2.4039  1.4782     1.6263
+75|90  3.1595  1.4865     2.1255
+90|95  3.8099  1.5005     2.5391
+
+Residual Deviance: 256.6247 
+AIC: 286.6247 
+(695 observations deleted due to missingness)
+> coeftest(m1)
+
+z test of coefficients:
+
+                        Estimate Std. Error z value Pr(>|z|)   
+unlist(test.20$DDI_1)  0.1747643  0.1607168  1.0874  0.27686   
+unlist(test.20$DDI_2) -1.0832749  0.5973536 -1.8135  0.06976 . 
+test.20$Upc            0.0446944  0.0677571  0.6596  0.50949   
+test.20$gfr           -0.0136832  0.0098144 -1.3942  0.16326   
+test.20$n_agents       1.2493855  0.4375714  2.8553  0.00430 **
+test.20$BMIPCTAG       0.0195855  0.0079781  2.4549  0.01409 * 
+test.20$CKDONST       -0.1068654  0.0481162 -2.2210  0.02635 * 
+test.20$GHTOTINC      -0.1110857  0.0750815 -1.4795  0.13900   
+test.20$MALE1FE0      -0.0402574  0.4406829 -0.0914  0.92721   
+test.20$age           -0.0413490  0.0555471 -0.7444  0.45664   
+10|25                 -0.0714889  1.5013556 -0.0476  0.96202   
+25|50                  1.0186016  1.4772386  0.6895  0.49049   
+50|75                  2.4039284  1.4781632  1.6263  0.10389   
+75|90                  3.1595076  1.4865021  2.1255  0.03355 * 
+90|95                  3.8099433  1.5005337  2.5391  0.01112 * 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Interpretation: as DDI_2 increases by one unit, the log-odds of moving from LVMIp 10% to any of the other categories decreases by -1.08
+OR = exp(-1.08) = 0.165 or 16%. 
