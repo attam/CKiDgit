@@ -1,0 +1,289 @@
+Study population (n=260):
+inclusion criteria:
+- entered into CKiD study
+- VISIT 20
+- BP measured
+- known age, gender and height (to calculate BP %ile)
+- successfull ABPM study
+- eGFR based on full CKiD gfr equation
+
+exclusion criteria:
+- patients taking combination drugs (eg, Lisinopril/HCTZ)
+- missing BP medication details: daily dose, daily frequency, weight
+
+Definition of DDI (only calulated for BP medications):
+- if weight(kg) x mg/kg > maximum dose (mg), then DDI = dose(mg)/maximum dose (mg) [up to maximum of 1]
+- if weight(kg) x mg/kg < maximum dose (mg), then DDI = dose (mg/kg)/maximum dose (mg/kg) [up to maximum of 1]
+
+cummulative DDI = sum of all DDI for each agent taken by the patient
+(eg, for a patient with 2 BP medications, having DDI of 0.2 and 0.7, the cummulative DDI = 0.9)
+
+Hypothesis: If hypertension is undertreated due to inadequate dose of BP medications, patients hypertension will have the same or lower cummulative DDI compared to those with normal blood pressure.
+
+
+Summary Table
+-------------------------------------------------------------------------------------------------------------------------
+No   Variable            Stats / Values                  Freqs (% of Valid)    Text Graph            Valid      Missing  
+---- ------------------- ------------------------------- --------------------- --------------------- ---------- ---------
+1    age                 Mean (Std.Dev) :12.77 (3.71)    233 distinct values               : .       260        0        
+     [numeric]           min < med < max:                                            . : : : :       (100%)     (0%)     
+                         3.01 < 13 < 19.45                                           : : : : :                           
+                         IQR (CV) :6 (0.29)                                        . : : : : : .                         
+                                                                                 : : : : : : : :                         
+
+2    MALE1FE0            Mean (Std.Dev) :0.58 (0.49)     0 : 108 (41.5%)       IIIIIIII              260        0        
+     [numeric]           min < med < max:                1 : 152 (58.5%)       IIIIIIIIIII           (100%)     (0%)     
+                         0 < 1 < 1                                                                                       
+                         mode:                                                                                           
+
+3    CKD_stage           1. 1                              1 ( 0.4%)                                 260        0        
+     [ordered, factor]   2. 2                             35 (13.5%)           II                    (100%)     (0%)     
+                         3. 3                            145 (55.8%)           IIIIIIIIIII                               
+                         4. 4                             66 (25.4%)           IIIII                                     
+                         5. 5                             13 ( 5.0%)           I                                         
+
+4    gfr                 Mean (Std.Dev) :51.66 (20.84)   260 distinct values     . : .               260        0        
+     [numeric]           min < med < max:                                        : : : :             (100%)     (0%)     
+                         14.88 < 48.87 < 127.89                                  : : : :                                 
+                         IQR (CV) :27.96 (0.4)                                 : : : : : .                               
+                                                                               : : : : : : : . . .                       
+
+5    CKDONST             Mean (Std.Dev) :-8.27 (4.8)     252 distinct values         . : .     :     255        5        
+     [numeric]           min < med < max:                                          . : : :   . :     (98.08%)   (1.92%)  
+                         -17.5 < -8.49 < -0.08                                   : : : : : . : :                         
+                         IQR (CV) :7.83 (-0.58)                                : : : : : : : : :                         
+                                                                               : : : : : : : : :                         
+
+6    n_agents            Mean (Std.Dev) :1.26 (0.57)     1 : 207 (79.6%)       IIIIIIIIIIIIIII       260        0        
+     [integer]           min < med < max:                2 :  42 (16.2%)       III                   (100%)     (0%)     
+                         1 < 1 < 4                       3 :   8 ( 3.1%)                                                 
+                         IQR (CV) :0 (0.45)              4 :   3 ( 1.1%)                                                 
+
+7    BPclass.factor      1. NL                           105 (40.4%)           IIIIIIII              260        0        
+     [ordered, factor]   2. WCH                            5 ( 1.9%)                                 (100%)     (0%)     
+                         3. MH                           105 (40.4%)           IIIIIIII                                  
+                         4. AH                            45 (17.3%)           III                                       
+
+8    SBPZAGH2017         Mean (Std.Dev) :0.37 (1.07)     250 distinct values             :           260        0        
+     [numeric]           min < med < max:                                              . :           (100%)     (0%)     
+                         -2.33 < 0.32 < 2.37                                         . : : : :   .                       
+                         IQR (CV) :1.44 (2.88)                                       : : : : : . :                       
+                                                                               . : : : : : : : : :                       
+
+9    DBPZAGH2017         Mean (Std.Dev) :0.32 (1)        253 distinct values             :           260        0        
+     [numeric]           min < med < max:                                            . : :           (100%)     (0%)     
+                         -2.33 < 0.16 < 2.37                                         : : : . :                           
+                         IQR (CV) :1.43 (3.15)                                     . : : : : : . :                       
+                                                                               . . : : : : : : : :                       
+
+10   LVMIp               Mean (Std.Dev) :56.13 (30.28)   10 : 42 (16.2%)       III                   260        0        
+     [numeric]           min < med < max:                25 : 38 (14.6%)       II                    (100%)     (0%)     
+                         10 < 50 < 95                    50 : 58 (22.3%)       IIII                                      
+                         IQR (CV) :65 (0.54)             75 : 56 (21.5%)       IIII                                      
+                                                         90 : 29 (11.2%)       II                                        
+                                                         95 : 37 (14.2%)       II                                        
+
+11   Upc                 Mean (Std.Dev) :0.93 (1.43)     223 distinct values   :                     260        0        
+     [numeric]           min < med < max:                                      :                     (100%)     (0%)     
+                         0.02 < 0.41 < 9.6                                     :                                         
+                         IQR (CV) :0.84 (1.54)                                 : .                                       
+                                                                               : : .                                     
+
+12   Upc.factor          1. normal                       145 (55.8%)           IIIIIIIIIII           260        0        
+     [ordered, factor]   2. mild                          38 (14.6%)           II                    (100%)     (0%)     
+                         3. moderate                      48 (18.5%)           III                                       
+                         4. severe                        29 (11.2%)           II                                        
+
+13   BMIz                Mean (Std.Dev) :0.4 (1.15)      255 distinct values           . :           260        0        
+     [numeric]           min < med < max:                                              : : . .       (100%)     (0%)     
+                         -2.95 < 0.41 < 2.93                                         . : : : : .                         
+                         IQR (CV) :1.72 (2.86)                                     . : : : : : :                         
+                                                                                 . : : : : : : : .                       
+
+14   GNGDIAG             Mean (Std.Dev) :2.7 (0.7)       1 :  12 ( 4.6%)                             260        0        
+     [integer]           min < med < max:                2 :  79 (30.4%)       IIIIII                (100%)     (0%)     
+                         1 < 3 < 4                       3 : 144 (55.4%)       IIIIIIIIIII                               
+                         IQR (CV) :1 (0.26)              4 :  25 ( 9.6%)       I                                         
+
+15   GHTOTINC            Mean (Std.Dev) :5.7 (3.05)      12 distinct values                    :     260        0        
+     [integer]           min < med < max:                                                      :     (100%)     (0%)     
+                         -9 < 7 < 8                                                            :                         
+                         IQR (CV) :4 (0.53)                                                . . :                         
+                                                                                         . : : :                         
+
+16   RACE                Mean (Std.Dev) :2.19 (2.21)     1 : 181 (69.6%)       IIIIIIIIIIIII         260        0        
+     [integer]           min < med < max:                2 :  25 ( 9.6%)       I                     (100%)     (0%)     
+                         1 < 1 < 8                       3 :   4 ( 1.5%)                                                 
+                         IQR (CV) :1 (1.01)              4 :   2 ( 0.8%)                                                 
+                                                         5 :   9 ( 3.5%)                                                 
+                                                         6 :  15 ( 5.8%)       I                                         
+                                                         7 :   9 ( 3.5%)                                                 
+                                                         8 :  15 ( 5.8%)       I                                         
+
+17   sum_DDI             Mean (Std.Dev) :0.57 (0.54)     190 distinct values   :                     260        0        
+     [numeric]           min < med < max:                                      :                     (100%)     (0%)     
+                         0 < 0.39 < 3                                          :                                         
+                         IQR (CV) :0.61 (0.94)                                 : :                                       
+                                                                               : : . .                                   
+-------------------------------------------------------------------------------------------------------------------------
+
+Comparison of cummulative DDI in each BP group based on different factors:
+
+BP groups (NL = normotensive, MH = masked HTN, AH = ambulatory HTN)
+Note: WCH excluded (n=5, remaining n=255)
+- The distribution of cummulative DDI is skewed, but normalizes with ln(sum_DDI) transformation.
+- Therefore, all statistical tests will be performed on ln(sum_DDI).
+- The summary tables (mean, sd, min,max,N) are all using the actual (untransformed) cummulative DDI.
+
+1) Overall summary (entire study population, n=255)
+
+   BPclass.factor      Mean        SD         Min      Max Mean BP agents   N
+1:             NL 0.5007545 0.5026851 0.016666667 3.000000       1.142857 105
+2:             MH 0.5452289 0.4751448 0.055260831 2.000000       1.228571 105
+3:             AH 0.7751686 0.6008716 0.003531073 2.789098       1.577778  45
+
+1) Overall: average cummulative DDI by BP group
+
+Comparison of mean cummulative DDI:
+  .y.        group1 group2      p  p.signif method
+
+1 sum_DDI.ln NL     MH     0.653      ns       T-test
+2 sum_DDI.ln NL     AH     0.0395     *        T-test
+3 sum_DDI.ln MH     AH     0.0789     ns       T-test
+
+  .y.             p  p.signif method
+1 sum_DDI.ln 0.0533    ns       Anova 
+
+Interpretation:
+- the cummulative DDI is signinificantly lower in the NL vs AH group [mean(SD) = 0.5(0.5) vs 0.78(0.6), p=0.04].
+- ANOVA: comparing mean cummulative DDI bewteen all groups, p-value is 0.053
+- there is no significant difference in cummulative DDI between NL and MH groups (may suggest that MH is not receiving adequate dose).
+
+2) Subgroup: Primary CKD diagnosis - non-glom only (average cummulative DDI by BP class)
+
+   BPclass.factor      Mean        SD         Min      Max Mean BP agents  N
+1:             NL 0.5907604 0.6499227 0.016666667 3.000000       1.219512 41
+2:             MH 0.6817113 0.5517629 0.055260831 2.000000       1.343750 32
+3:             AH 1.0539189 0.6854929 0.003531073 2.789098       1.777778 18
+
+Comparison of mean cummulative DDI by BP group:
+
+  .y.        group1 group2     p  p.signif method
+
+1 sum_DDI.ln NL     MH     0.358    ns       T-test
+2 sum_DDI.ln NL     AH     0.122    ns       T-test
+3 sum_DDI.ln MH     AH     0.318    ns       T-test
+
+  .y.            p  p.signif method
+1 sum_DDI.ln 0.152    ns       Anova 
+
+Interpretation:
+In the non-glomerular group, the normotensive children and hypertensive children are receiving similar cummulative dose of antihypertensive medications. This suggests a possible opportunity to improve BP control in non-glom children with hypertension.
+
+3) Subgroup: BMI categories (Underweight=0-5th %ile, Normal = 5-85th %ile, Overweight = 85-95th %ile, Obese = 95-99th %ile, Severely Obese = >99th %ile)
+[Note: Obese and Severely Obese groups were combined for this analysis]
+
+    BPclass.factor BMIPCTAG.factor.2      Mean        SD         Min       Max Mean BP agents  N
+ 1:             NL          Under_wt 0.2894082 0.2303358 0.150186231 0.5552779       1.000000  3
+ 2:             MH          Under_wt 0.1559818 0.1015520 0.068418172 0.2673082       1.000000  3
+ 3:             AH          Under_wt 1.0000000        NA 1.000000000 1.0000000       1.000000  1
+ 4:             NL             NL_wt 0.5307418 0.5010592 0.041614648 3.0000000       1.132353 68
+ 5:             MH             NL_wt 0.5630155 0.5212486 0.055260831 2.0000000       1.223881 67
+ 6:             AH             NL_wt 0.6883258 0.5225778 0.003531073 1.9483604       1.545455 33
+ 7:             NL           Over_wt 0.4210724 0.3058588 0.130616510 1.2500000       1.125000 16
+ 8:             MH           Over_wt 0.5054371 0.3484915 0.063808065 1.1974638       1.388889 18
+ 9:             AH           Over_wt 0.8580616 0.3123010 0.500000000 1.0741847       1.333333  3
+10:             NL      Obese+Sev_Ob 0.4935220 0.6709049 0.016666667 3.0000000       1.222222 18
+11:             MH      Obese+Sev_Ob 0.5859522 0.4278913 0.056921676 1.5000000       1.117647 17
+12:             AH      Obese+Sev_Ob 1.0742067 0.9193754 0.095057034 2.7890983       1.875000  8
+
+
+Comparing average cummulative DDI by BP status (within each BMI subgroup):
+
+  BMIPCTAG.factor.2 .y.        group1 group2    p   p.signif    method
+
+1 NL_wt             sum_DDI.ln NL     MH     0.947     ns       T-test
+2 NL_wt             sum_DDI.ln NL     AH     0.421     ns       T-test
+3 NL_wt             sum_DDI.ln MH     AH     0.407     ns       T-test
+4 Over_wt           sum_DDI.ln NL     MH     0.626     ns       T-test
+5 Over_wt           sum_DDI.ln NL     AH     0.0380    *        T-test
+6 Over_wt           sum_DDI.ln MH     AH     0.0596    ns       T-test
+7 Obese+Sev_Ob      sum_DDI.ln NL     MH     0.334     ns       T-test
+8 Obese+Sev_Ob      sum_DDI.ln NL     AH     0.0799    ns       T-test
+9 Obese+Sev_Ob      sum_DDI.ln MH     AH     0.258     ns       T-test
+
+   BMIPCTAG.factor.2        .y.         p  p.signif method
+1:             NL_wt sum_DDI.ln 0.5802617       ns  Anova
+2:           Over_wt sum_DDI.ln 0.1906131       ns  Anova
+3:      Obese+Sev_Ob sum_DDI.ln 0.1502937       ns  Anova
+
+Interpretation:
+Comparing cummulative DDI by BP status (within each BMI subgroup), there are no significant differences (except for Overweight NL vs AH, however n is very small, 3)
+- The cummulative DDI is similar between normal and hypertensive patients in all BMI categories.
+
+4) Subgroup: CKD stage 2-5 (average cummulative DDI by BP class):
+
+   BPclass.factor CKD_stage.factor      Mean        SD         Min      Max Mean BP agents  N
+1:             NL              2+3 0.5511215 0.5642623 0.016666667 3.000000       1.178082 73
+2:             MH              2+3 0.5678372 0.4841970 0.055260831 2.000000       1.214286 70
+3:             AH              2+3 0.6597619 0.4619202 0.003531073 1.948360       1.457143 35
+4:             NL              4+5 0.3858547 0.2977406 0.083333333 1.250000       1.062500 32
+5:             MH              4+5 0.5000124 0.4600238 0.056921676 1.798722       1.257143 35
+6:             AH              4+5 1.0951103 0.8587055 0.095057034 2.789098       1.777778  9
+
+  CKD_stage.factor .y.        group1 group2     p  p.signif method
+1 2+3              sum_DDI.ln NL     MH     0.800     ns      T-test
+2 2+3              sum_DDI.ln NL     AH     0.351     ns      T-test
+3 2+3              sum_DDI.ln MH     AH     0.451     ns      T-test
+4 4+5              sum_DDI.ln NL     MH     0.597     ns      T-test
+5 4+5              sum_DDI.ln NL     AH     0.0475    *       T-test
+6 4+5              sum_DDI.ln MH     AH     0.0793    ns      T-test
+
+  CKD_stage.factor .y.             p  p.signif method
+1 2+3              sum_DDI.ln 0.571     ns       Anova 
+2 4+5              sum_DDI.ln 0.0276    *        Anova 
+
+Interpretation:
+Looking at cummulative DDI by BP status within each CKD stage subgroup, there are no significant differences in the CKD stage 2+3 group.
+In the CKD stage 4+5 group the average cummulative DDI is significantly higher in the AH group vs NL [mean(SD): 1.1(0.86) vs 0.39(0.30), p=0.048]
+The ANOVA within the CKD stage 4+5 group shows that the average cummulative DDI is not equal among the different BP groups (p=0.028).
+
+5) Subgroup: Age (3-10y,10-13y,13-16y,16-20y)
+    BPclass.factor age.factor      Mean        SD         Min      Max Mean BP agents  N
+ 1:             NL     (0,10] 0.4330719 0.3838961 0.106564365 2.000000       1.173913 23
+ 2:             MH     (0,10] 0.4603921 0.4640180 0.056921676 2.000000       1.160000 25
+ 3:             AH     (0,10] 0.7335137 0.5008517 0.095057034 1.948360       1.533333 15
+ 4:             NL    (10,13] 0.4948964 0.4088710 0.041614648 2.000000       1.060606 33
+ 5:             MH    (10,13] 0.6492892 0.5318488 0.117128936 1.798722       1.227273 22
+ 6:             AH    (10,13] 0.4967114 0.2797967 0.221043324 1.000000       1.428571  7
+ 7:             NL    (13,16] 0.4536799 0.3320403 0.016666667 1.103901       1.107143 28
+ 8:             MH    (13,16] 0.4476180 0.4198409 0.055260831 1.750000       1.161290 31
+ 9:             AH    (13,16] 0.7461899 0.3782786 0.250000000 1.250000       1.625000  8
+10:             NL   (16,Inf] 0.6468546 0.8394804 0.083333333 3.000000       1.285714 21
+11:             MH   (16,Inf] 0.6510636 0.4830884 0.070430471 2.000000       1.370370 27
+12:             AH   (16,Inf] 0.9622257 0.8367612 0.003531073 2.789098       1.666667 15
+
+   age.factor .y.        group1 group2      p  p.signif method
+ 1 (0,10]     sum_DDI.ln NL     MH     0.610     ns       T-test
+ 2 (0,10]     sum_DDI.ln NL     AH     0.0409    *        T-test
+ 3 (0,10]     sum_DDI.ln MH     AH     0.0244    *        T-test
+ 4 (16,Inf]   sum_DDI.ln NL     MH     0.341     ns       T-test
+ 5 (16,Inf]   sum_DDI.ln NL     AH     0.696     ns       T-test
+ 6 (16,Inf]   sum_DDI.ln MH     AH     0.898     ns       T-test
+ 7 (13,16]    sum_DDI.ln NL     MH     0.737     ns       T-test
+ 8 (13,16]    sum_DDI.ln NL     AH     0.0238    *        T-test
+ 9 (13,16]    sum_DDI.ln MH     AH     0.0113    *        T-test
+10 (10,13]    sum_DDI.ln NL     MH     0.418     ns       T-test
+11 (10,13]    sum_DDI.ln NL     AH     0.490     ns       T-test
+12 (10,13]    sum_DDI.ln MH     AH     0.943     ns       T-test
+
+   age.factor        .y.         p p.adj p.format p.signif method
+1:     (0,10] sum_DDI.ln 0.0522263  0.21    0.052       ns  Anova
+2:    (10,13] sum_DDI.ln 0.6602103  1.00    0.660       ns  Anova
+3:    (13,16] sum_DDI.ln 0.1006167  0.30    0.101       ns  Anova
+4:   (16,Inf] sum_DDI.ln 0.7333296  1.00    0.733       ns  Anova
+
+Interpretation:
+- In young kids (3-10y) cummulative DDI is significantly higher in AH vs NL and AH vs MH. In adolescents (13-16y), the findings are similar. ANOVA did not show any significant differences.
+
+- Next step: Compare number of agents in NL vs HTN. The data above appears to show significantly higher average # of BP agents in hypertensive vs normotensive patients.

@@ -23,3 +23,12 @@ ISRADIPINE,0.8,20,,,
 AMILORIDE,0.625,20,,use with caution if decreased GFR,
 METOPROLOL,6,200,,,
 CARVEDILOL,,80,,,immediate release max: 50mg/day
+TERAZOSIN,,20,,,source: Lexicomp
+OLMESARTAN,,40,,,if weight 5-20kg: max = 0.6mg/kg/day; if weight 20-35kg: max=20mg/day; if weight >35kg: max=40mg/day
+PRAZOSIN,2,20,,,
+METOLAZONE,0.4,20,,,source: Lexicomp
+DILTIAZEM,6,360,,,source: Lexicomp
+IRBESARTAN,,150,,,"Lexicomp: if age 6-12: max=150mg/day, if age>=13y: max = 300mg/day"
+FELODIPINE,,10,,,
+GUANFACINE,,2,,,source: Lexicomp
+MINOXIDIL,,100,,,Lexicomp: age<12: max = 50mg/day; age>=12: max=100mg/day

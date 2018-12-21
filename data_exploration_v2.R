@@ -11,14 +11,8 @@ library(tibble)
 library(ggplot2)
 detach("package:MASS", unload=TRUE)
 
-#this change is to test git functionality...
-#library("dplyr", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
-#library("reshape2", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
-#library("histogram", lib.loc="~/R/x86_64-pc-linux-gnu-library/3.5")
-
 wd<-if_else(Sys.info()["nodename"]=='matta', "~/Documents/Research/CKiDgit", "C:/Users/Orit/Downloads/CKiD/CKiDgit")
 setwd(wd)
-#setwd("C:/Users/Orit/Downloads/CKiD/CKiDgit")
 
 # importing data
 medsum_full <- read.csv("data/medsum_full.csv")
@@ -48,14 +42,9 @@ gh <- read.csv("data/gh.csv")
 # pe %>% select(VISIT, PEPRBLPM)%>% group_by(VISIT) %>% table %>% addmargins()
 # growth appears to contain the best weights after comparing data from pe and growth
 
-echo_df<-echo %>% select(CASEID,VISIT,ECHODATEY,LVMI,LVHF,LVHE,CAUTION)
-# echo_df %>% group_by(VISIT) %>% filter(CAUTION==0) %>% summarise_at(vars(ECHODATEY), funs(date_mean=mean,date_min=min,date_max=max, n_pts=length))
-
-
 # combining data files
 # selection of candidate variables to include from each data file
 # combining using inner_join
-
 
 test<-f13 %>% select(CASEID,VISIT,GHVISDAT,GHHGRADM,GHHGRADF,GHTOTINC,GHBFAMHB,contains("HBP")) %>% tbl_df
 test<-full_join(socdem %>% select(-VERSION),test)
@@ -85,9 +74,9 @@ test<-test %>% group_by(CASEID) %>% mutate(MALE1FE0=mean(MALE1FE0, na.rm=TRUE))
 gfr<-function(height,cr,cystatin,bun,gender, permissive=NULL) {
   if (anyNA(c(height,cr,cystatin,bun,gender))) {
     if (!is.null(permissive)){
-    if (anyNA(c(height,cr))) return(NA)
-    return (((height/100)*0.413)/cr)
-} else return (NA)}
+      if (anyNA(c(height,cr))) return(NA)
+      return (((height/100)*0.413)/cr)
+    } else return (NA)}
   term1=((height/100)/cr)^0.456
   term2=(1.8/cystatin)^0.418
   term3=(30/bun)^0.079
@@ -133,35 +122,24 @@ medcompliance<-function(miss7d,dlyfreq) {
   if (dlyfreq<0) dlyfreq<-NA
   return((dlyfreq*7-miss7d)/(dlyfreq*7))
 }
+
 medsum_full$compliance<-mapply(medcompliance,medsum_full$MSMISS7D,medsum_full$DLYFREQ)
 medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>%  mutate(mean_compliance=mean(compliance,na.rm=TRUE)) %>% ungroup
-
-# more organizing of medication data
-# these lines generatet columns for std_dose (dose per kg, with AVWEIGHT from growth data), corrects
-# for split dosing (eg, labetalol), and nests drug data into a 5 column list called rx_info
-# the drug dose index is the 5th column, and uses gfr based on ckidfull equation if possible, otherwise bedside GFR is used
+medsum_full<-left_join(test %>% select(CASEID,VISIT,AVWEIGHT,age,gfr),medsum_full)
+medsum_full<-medsum_full %>% mutate(std_dose=ifelse(DLYDOSE>0,DLYDOSE/AVWEIGHT,NA))
 source("DDI.R")
-medsum_full<-full_join(test %>% select(CASEID,VISIT,AVWEIGHT,gfr),medsum_full)
-# function to calculate standard dose (in mg/kg)
-std_dose<-function(dlydose,weight){
-  if (anyNA(c(dlydose,weight))) return (NA)
-  if(dlydose>0 & weight>0) {
-    return(dlydose/weight)
-  } else return(NA)
-}
-medsum_full$std_dose<-mapply(std_dose,medsum_full$DLYDOSE,medsum_full$AVWEIGHT)
-medsum_full$DDI<-mapply(DDI,medsum_full$DLYDOSE, medsum_full$med.corrected,medsum_full$AVWEIGHT, medsum_full$gfr)
+medsum_full$ddi<-mapply(DDI,medsum_full$DLYDOSE,medsum_full$med.corrected,medsum_full$age,medsum_full$AVWEIGHT,medsum_full$gfr)
+
 # identify duplicates (cases with visit codes that have coresponding visit dates that are not the same) and eliminate all the corresponding medication data
 # justifications 1) unable to determine whether duplicate visits represent 'addition' of medications or 'switching' between meds
 # 2) some cases have same visit code and corresponding visit dates separated in time by up to 4.28 years (obviously an error in recording data)
-medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(ndup=n_distinct(MSVISDAT), visitmean=mean(unique(MSVISDAT,na.rm=TRUE)), visitsd=sd(unique(MSVISDAT,na.rm=TRUE)))
-medsum_full %>% group_by(VISIT) %>% filter(ndup>1) %>% summarise(npts.dup.visit=n_distinct(CASEID)) # show how many patients at each visit are duplicated
-medsum_full %>% group_by(VISIT) %>% arrange(desc(visitsd)) # show the extreme values of visit date sd
+medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(ndup=n_distinct(MSVISDAT))
 medsum_full<-medsum_full %>%filter(ndup==1) # remove all duplicates from the data
 medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(n_agents=n_distinct(med.corrected, na.rm=TRUE))
+medsum_full<-medsum_full %>% group_by(CASEID,VISIT) %>% mutate(sum_DDI=sum(ddi))
 medsum_full.old<-medsum_full
-medsum_full<-medsum_full %>% ungroup %>% nest(c(6,8,9,11,13,14), .key="rx_info") %>% select(-c(3,4,7))
-medsum_full<-dcast(medsum_full,CASEID+VISIT+MSVISDAT+n_agents+mean_compliance~med.corrected, value.var="rx_info")
+medsum_full<-medsum_full %>% ungroup %>% nest(.,BPmedgroup,DLYFREQ,DLYDOSE,std_dose,ddi,compliance, .key="rx_info")
+medsum_full<-dcast(medsum_full,CASEID+VISIT+MSVISDAT+n_agents+mean_compliance+sum_DDI~med.corrected, value.var="rx_info")
 test<-full_join(medsum_full,test)
 
 # replace all NULL values of drugs with a tibble containing NA's using change_null_to_list function above
@@ -171,26 +149,25 @@ change_null_to_list <- function(x) {
   # If x is a data frame, do nothing and return x
   # Otherwise, return a data frame with 1 row of NAs
   if (!is.null(x)) {return(x)}
-  else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA),DDI=as.numeric(NA),compliance=as.numeric(NA)))))}
+  else {return(as_tibble(t(c(BPmedgroup=as.factor(NA), DLYFREQ=as.numeric(NA), DLYDOSE=as.numeric(NA),std_dose=as.numeric(NA),ddi=as.numeric(NA),compliance=as.numeric(NA)))))}
 }
 
 for (i in which(names(test)=="ACETAZOLAMIDE"):which(names(test)=="VERAPAMIL")) {test[[names(test)[i]]]<-lapply(test[[names(test)[i]]],change_null_to_list)}
 
-# cardio data organization
-# overview of data...
-# display the time differences between ABPM and casual BP measurement dates
-temp<-cardio %>% filter(VISIT %%20==0,CASEID %in% cases) %>% mutate(date_dif=ABPM_DATE-DB_DATE) %>% group_by(VISIT) %>% summarise_at(vars(date_dif),funs(mean_dif_days=365*mean(.,na.rm=TRUE),max_dif_yr=max(.,na.rm=TRUE), sd_dif_days=365*sd(.,na.rm=TRUE)))
-write_csv(temp,"ABPM_PE_time_dif.csv")
-# display the number of observations where the difference between the date of visit and the ABPM date is > 90 days (=TRUE)
-# consider excluding these observations since the BP status is less reliable
-temp<-cardio %>% filter(VISIT %% 20 ==0,CASEID %in% cases) %>% mutate(date_dif=abs(ABPM_DATE-DB_DATE)) %>% group_by(VISIT) %>% mutate(big_dif=date_dif>90/365) %>% select(big_dif) %>% table %>% addmargins
-write.table(temp,"ABPM_PE_bigtime_dif.csv")
-# display the counts for all the BP statuses grouped by visit
-# patients with BP status -1 occured when casual BP was not classified (either no BP entered at that visit, or BP entered, but no percentile/z-score)
-# cardio %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus !=-1) %>% select(BPstatus) %>% table() %>% addmargins
-# display information about timing of ABPM data, grouped by visits
-temp<-cardio%>% filter(VISIT %% 20==0,ABPMSUCCESS==1, CASEID %in% cases) %>% group_by(VISIT) %>% summarise_at(vars(ABPM_DATE), funs(date_mean=mean,date_min=min,date_max=max,n_pts=length))
-write_csv(temp,"ABPM_timing_by_visit.csv")
+# parse drug info stored in test as separate variables for analysis
+source("get_drug_info.R")
+drugname<-names(test)[which(names(test)=="ACETAZOLAMIDE"):which(names(test)=="VERAPAMIL")]
+# exclude combo drugs (contain '/', eg "AMLODIPINE/HCTZ")
+drugname<-drugname[-grep("\\/",drugname)]
+temp <- paste(drugname[1:43], "<- get_drug_info(test,'",drugname,"', c(1:6))", sep="")
+eval(parse(text=temp))
+
+temp.1<-paste("test$",drugname[1:43],"_ddi<-",drugname[1:43],"$ddi", sep="")
+temp.2<-paste("test$",drugname[1:43],"_std_dose<-",drugname[1:43],"$std_dose", sep="")
+eval(parse(text=temp.1))
+eval(parse(text=temp.2))
+
+
 
 # add columns for new 2017 AAP BP percentiles and z-scores (this takes about 2 minutes to calculate)
 source('bpp4.R')
@@ -199,12 +176,10 @@ source('BPstatus4th.R')
 source('BPstatus2017.R')
 source('bpclass.R')
 source('bpclass2.R')
-
 test$SBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,1,test$SBP, z=F)
 test$DBPPCTAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,2,test$DBP, z=F)
 test$SBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,1,test$SBP, z=T)
 test$DBPZAGH2017<-mapply(bpp,test$age,test$AVHEIGHT,test$MALE1FE0,2,test$DBP, z=T)
-
 
 # classification of BP status based on 4th report and 2017 guidelines
 # note: BP status is NA when BP was unavailable
@@ -213,9 +188,6 @@ test$BPstatus2017<-mapply(BPstatus2017,test$SBP,test$DBP,test$age,test$MALE1FE0,
 missing_htpct<-which(is.na(test$HTPCTAG) & !is.na(test$AVHEIGHT))
 test$HTPCTAG[missing_htpct]<- mapply(htz,test$AVHEIGHT[missing_htpct], test$age[missing_htpct], test$MALE1FE0[missing_htpct],p=T)
 test$BPstatus4th<-mapply(bpstatus4th,test$SBP,test$DBP,test$age,test$MALE1FE0,test$HTPCTAG,test$SBPPCTAGH,test$DBPPCTAGH)
-
-# stacked barplot of BP status (in proportions) grouped by visit
-test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% table(useNA = 'no') %>%  plot()
 
 # cardio data organization
 # analysis of BP status
@@ -229,63 +201,34 @@ test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% t
 # noctHTN variable: BP% dipping <10%
 cardio<-cardio %>%rowwise()%>% mutate(noctHTN=sum(SYSPCTDIPPING<10,DIAPCTDIPPING<10))
 cardio<-left_join(cardio,test %>% select(CASEID,VISIT,SBPPCTAGH2017,DBPPCTAGH2017, age,MALE1FE0,AVHEIGHT))
-cardio<-cardio %>% rowwise() %>% mutate(BPclass= bpclass(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017))
-cardio<-cardio %>% rowwise() %>% mutate(BPclass2= bpclass2(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017))
-test<-full_join(cardio %>% select(CASEID,VISIT,ABPMSUCCESS, BPclass,BPclass2,noctHTN),test)
+cardio<-cardio %>% rowwise() %>% mutate(BPclass= bpclass2(WKSYSINDX,WKDIAINDX,SLSYSINDX,SLDIAINDX,WKSYSLOAD,WKDIALOAD,SLSYSLOAD, SLDIALOAD, SBP, DBP, SBPPCTAGH2017,DBPPCTAGH2017))
+test<-full_join(cardio %>% select(CASEID,VISIT,ABPMSUCCESS,BPclass,noctHTN),test)
 # combine BP class variants into larger groups using BP classification from 2014
-test$BPclass.factor<-cut(test$BPclass,0:6,right=FALSE, labels=c("NL","WCH","PH","MH","AH","SAH"),ordered_result = TRUE)
-test$BPclass2.factor<-cut(test$BPclass2,0:4,right=FALSE, labels=c("NL","WCH","MH","AH"),ordered_result = TRUE)
+test$BPclass.factor<-cut(test$BPclass,0:4,right=FALSE, labels=c("NL","WCH","MH","AH"),ordered_result = TRUE)
+test$BPclass.2.factor<-factor(test$BPclass.factor<="WCH", labels=c("NL+WCH","MH+AH"))
 # Create variable LVMIp using LVMIp function to calculate LVMI percentiles
-test$LVMIp<-NA
-test$LVMIp[which(!is.na(test$LVMI))]<-mapply(LVMIp, test$MALE1FE0[which(!is.na(test$LVMI))],test$age[which(!is.na(test$LVMI))],test$LVMI[which(!is.na(test$LVMI))])
+test<-test %>% filter(!is.na(LVMI)) %>% rowwise() %>% mutate(LVMIp=LVMIp(MALE1FE0,age,LVMI))
+test$BMIz<-qnorm(test$BMIPCTAG/100)
+test$GNGDIAG.factor<-factor(test$GNGDIAG<=2,labels=c("glom","non-glom"))
 
-
-# parse drug info stored in test as separate variables for analysis
-source("get_drug_info.R")
-drugname<-names(test)[which(names(test)=="ACETAZOLAMIDE"):which(names(test)=="VERAPAMIL")]
-drugname<-drugname[-c(3,5,6,11,20,26,33)]
-temp <- paste(drugname[1:43], "<- get_drug_info(test,'",drugname,"', c(1:6))", sep="")
-eval(parse(text=temp))
-
-temp.1<-paste("test$",drugname[1:43],"_DDI<-",drugname[1:43],"$DDI", sep="")
-temp.2<-paste("test$",drugname[1:43],"_std_dose<-",drugname[1:43],"$std_dose", sep="")
-eval(parse(text=temp.1))
-eval(parse(text=temp.2))
-
-# draw histograms of DDI for each drug
-temp<-paste("if (!all(is.na(",drugname[1:43],"$DDI))) hist(",drugname[1:43],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:43],"\"))", sep="")
-par(mfrow=c(6,4))
-par(mar=c(2,2,1,1))
-eval(parse(text=temp))
-
-# comparing patients based on DDI
-# create tibble containing DDI for all meds, sorted in order of descending DDI
-# create separate columns for each medication (med1-med5)
-# create variable mean_DDI representing mean DDI for each patient (ie, mean DDI of all meds for each patient, patients with 0 meds have mean DDI = 0)
-#temp_DDI<-test%>% select(ends_with('_DDI')) %>% as.matrix %>% apply(.,1,sort,decreasing=T,na.last=T)
-test$mean_DDI<-NULL
-test$DDI_all<-as.data.frame(test %>% select(ends_with("_DDI")))
-DDI_all.2<-apply(test$DDI_all,1,FUN=function(x) sort(x,decreasing=TRUE,na.last=TRUE))
-test$DDI_all<-t(DDI_all.2)[,1:5]
-#test$DDI_all[which(test$n_agents==0),1]<-0
-temp<-paste("test$DDI_",1:5,"<-test$DDI_all[,",1:5,"]",sep='')
-eval(parse(text=temp))
-test$mean_DDI<-NA
-test$mean_DDI<-apply(test$DDI_all,1,FUN=function(x) mean(x,na.rm=TRUE))
-
-# save(test,file="test.RData")
+# save(test,file="test2.RData")
 load(file="test.RData")
 ### data organization complete ###
 
 
 ### data analysis begin ###
-# compare LVMIp to LVHE: show table of all LVMIp percentiles and the average proportion of patients categorized as LVH (using LVHE)
-test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVMIp) %>% summarise(mean_LVHE=mean(LVHE, na.rm=TRUE), mean_LVHF=mean(LVHF,na.rm=TRUE))
-test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVHE,LVHF) %>% summarise(mean_LVMIp=mean(LVMIp, na.rm=TRUE))
-
 # define cohort
-cases<-test.20 %>% filter(ABPMSUCCESS==1,!is.na(SCR),!is.na(AVHEIGHT), !is.na(AVWEIGHT), !is.na(BPstatus2017)) %>% select(CASEID) %>% unlist %>% as.numeric()
+combo_cases<-medsum_full.old %>% filter(VISIT==20,length(grep("\\/",med.corrected)!=0L)) %>% ungroup() %>% select(CASEID) %>% unique() %>% unlist() %>% as.numeric()
+cases<-test %>% filter(!CASEID %in% combo_cases,VISIT==20, n_agents>0,!is.na(sum_DDI),ABPMSUCCESS==1,!is.na(BUN), !is.na(CYC_DB),!is.na(SCR),!is.na(AVHEIGHT), !is.na(AVWEIGHT), !is.na(BPstatus2017)) %>% ungroup() %>%select(CASEID) %>% unique %>% unlist %>% as.numeric()# exclude those taking combo medications
 test.cohort<-test %>% filter(VISIT==20, CASEID %in% cases)
+
+test.cohort<-test.cohort %>% mutate(sum_DDI.ln=log(sum_DDI))
+
+cum_DDI.normotensive<-test.cohort %>% filter(BPclass.factor<="WCH") %>% ungroup %>% select(sum_DDI.ln) %>% unlist %>% as.numeric()
+cum_DDI.hypertensive<-test.cohort %>% filter(BPclass.factor>"WCH") %>% ungroup %>% select(sum_DDI.ln) %>% unlist %>% as.numeric()
+
+
+
 
 # timing of PE to ABPM
 # library(ggalt)
@@ -518,15 +461,15 @@ group_by(test.20.filtered, n_agents) %>%
     count = n(),
     mean = mean(mean_DDI, na.rm = TRUE),
     sd = sd(mean_DDI, na.rm = TRUE)
-    )
+  )
 # Compute the analysis of variance
 res.aov <- aov(mean_DDI ~ n_agents, data = test.20.filtered)
 # Summary of the analysis
 summary(res.aov)
 ggline(test.20.filtered, x = "n_agents", y = "mean_DDI", 
-               add = c("mean_se", "jitter"), 
-               order = c(1:4),
-               ylab = "mean_DDI", xlab = "n_agents")
+       add = c("mean_se", "jitter"), 
+       order = c(1:4),
+       ylab = "mean_DDI", xlab = "n_agents")
 
 # looking at strata based on n_agents
 # n_agents=1
@@ -575,13 +518,13 @@ library(RColorBrewer)
 # rename BPmedgroup for those not taking BP meds to "none"
 BPmedgroups<-levels(addNA(medsum_full.old$BPmedgroup))
 BPmedgroups[14]<-"none"
-medsum_full.old$BPmedgroup.2<-factor(medsum_full.old$BPmedgroup, levels=BPmedgroups)
-medsum_full.old$BPmedgroup.2[which(is.na(medsum_full.old$BPmedgroup.2))]<-"none"
+#medsum_full.old$BPmedgroup.2<-factor(medsum_full.old$BPmedgroup, levels=BPmedgroups)
+#medsum_full.old$BPmedgroup.2[which(is.na(medsum_full.old$BPmedgroup.2))]<-"none"
 g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases), aes(CKD_stage))
 colourCount = 14
 getPalette = colorRampPalette(brewer.pal(14, "Set2"))
 g+
-  geom_bar(aes(fill=BPmedgroup.2),width=0.5)+
+  #geom_bar(aes(fill=BPmedgroup.2),width=0.5)+
   scale_fill_manual(values = colorRampPalette(brewer.pal(14, "Set1"))(colourCount))+
   theme(axis.text.x=element_text(vjust=0.6))+
   labs(title="Histogram on categorical variable", subtitle="BP medication class by CKD stage (VISIT 20)")+
@@ -599,7 +542,7 @@ g+
 colourCount=14
 g<-ggplot(medsum_full.old %>% filter(VISIT==20, CASEID %in% cases,!is.na(n_agents)), aes(n_agents))
 g+
-  geom_bar(aes(fill=reorder(BPmedgroup.2,BPmedgroup.2,function(x) - length(x))),width=0.5)+
+  #geom_bar(aes(fill=reorder(BPmedgroup.2,BPmedgroup.2,function(x) - length(x))),width=0.5)+
   scale_fill_manual(values = colorRampPalette(brewer.pal(14, "Set1"))(colourCount))+
   labs(title="BP medication class by number of agents",subtitle="(VISIT 20)", caption="source:CKiD",x="number of BP agents")+
   guides(fill=guide_legend(title="BP medication class"))
@@ -722,7 +665,7 @@ g+geom_density(aes(fill=BPclass2.factor), adjust=0.25,alpha=0.8)+
        caption="Source:CKiD",
        x="mean DDI",
        fill="BP status")+
-coord_cartesian(xlim = c(0,1.2))
+  coord_cartesian(xlim = c(0,1.2))
 
 # distribution of mean_DDI by GNGDIAG (V20)
 temp<-test.cohort %>% filter(VISIT==20,!is.na(mean_DDI),!is.na(BPclass2.factor)) %>% select(mean_DDI,BPclass2.factor)
@@ -780,7 +723,7 @@ g+geom_density(aes(fill=factor(variable)),adjust=0.5,alpha=0.5)+
        caption="Source:CKiD",
        x="Date (yrs from cohort entry)",
        fill="Data type")+
-coord_cartesian(xlim = c(0.5,1.5))
+  coord_cartesian(xlim = c(0.5,1.5))
 
 # show all visits
 g<-ggplot(temp,aes(value))
@@ -936,3 +879,47 @@ ggboxplot(test.cohort %>% filter(!is.na(n_agents.factor)), x = "n_agents.factor"
   stat_compare_means(comparisons = my_comparisons)+ 
   coord_cartesian(ylim = c(-3,4))
 
+##########
+# cardio data organization
+# overview of data...
+# display the time differences between ABPM and casual BP measurement dates
+temp<-cardio %>% filter(VISIT %%20==0,CASEID %in% cases) %>% mutate(date_dif=ABPM_DATE-DB_DATE) %>% group_by(VISIT) %>% summarise_at(vars(date_dif),funs(mean_dif_days=365*mean(.,na.rm=TRUE),max_dif_yr=max(.,na.rm=TRUE), sd_dif_days=365*sd(.,na.rm=TRUE)))
+write_csv(temp,"ABPM_PE_time_dif.csv")
+# display the number of observations where the difference between the date of visit and the ABPM date is > 90 days (=TRUE)
+# consider excluding these observations since the BP status is less reliable
+temp<-cardio %>% filter(VISIT %% 20 ==0,CASEID %in% cases) %>% mutate(date_dif=abs(ABPM_DATE-DB_DATE)) %>% group_by(VISIT) %>% mutate(big_dif=date_dif>90/365) %>% select(big_dif) %>% table %>% addmargins
+write.table(temp,"ABPM_PE_bigtime_dif.csv")
+# display the counts for all the BP statuses grouped by visit
+# patients with BP status -1 occured when casual BP was not classified (either no BP entered at that visit, or BP entered, but no percentile/z-score)
+# cardio %>% group_by(VISIT) %>% filter(ABPMSUCCESS==1, BPstatus !=-1) %>% select(BPstatus) %>% table() %>% addmargins
+# display information about timing of ABPM data, grouped by visits
+temp<-cardio%>% filter(VISIT %% 20==0,ABPMSUCCESS==1, CASEID %in% cases) %>% group_by(VISIT) %>% summarise_at(vars(ABPM_DATE), funs(date_mean=mean,date_min=min,date_max=max,n_pts=length))
+write_csv(temp,"ABPM_timing_by_visit.csv")
+
+# stacked barplot of BP status (in proportions) grouped by visit
+test %>% filter(VISIT%%10==0) %>% group_by(VISIT) %>% select(BPstatus2017) %>% table(useNA = 'no') %>%  plot()
+
+# draw histograms of DDI for each drug
+temp<-paste("if (!all(is.na(",drugname[1:43],"$DDI))) hist(",drugname[1:43],"$DDI, xlim=c(0,3), breaks=200, main=paste(\"",drugname[1:43],"\"))", sep="")
+par(mfrow=c(6,4))
+par(mar=c(2,2,1,1))
+eval(parse(text=temp))
+
+# comparing patients based on DDI
+# create tibble containing DDI for all meds, sorted in order of descending DDI
+# create separate columns for each medication (med1-med5)
+# create variable mean_DDI representing mean DDI for each patient (ie, mean DDI of all meds for each patient, patients with 0 meds have mean DDI = 0)
+#temp_DDI<-test%>% select(ends_with('_DDI')) %>% as.matrix %>% apply(.,1,sort,decreasing=T,na.last=T)
+test$mean_DDI<-NULL
+test$DDI_all<-as.data.frame(test %>% select(ends_with("_DDI")))
+DDI_all.2<-apply(test$DDI_all,1,FUN=function(x) sort(x,decreasing=TRUE,na.last=TRUE))
+test$DDI_all<-t(DDI_all.2)[,1:5]
+#test$DDI_all[which(test$n_agents==0),1]<-0
+temp<-paste("test$DDI_",1:5,"<-test$DDI_all[,",1:5,"]",sep='')
+eval(parse(text=temp))
+test$mean_DDI<-NA
+test$mean_DDI<-apply(test$DDI_all,1,FUN=function(x) mean(x,na.rm=TRUE))
+
+# compare LVMIp to LVHE: show table of all LVMIp percentiles and the average proportion of patients categorized as LVH (using LVHE)
+test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVMIp) %>% summarise(mean_LVHE=mean(LVHE, na.rm=TRUE), mean_LVHF=mean(LVHF,na.rm=TRUE))
+test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVHE,LVHF) %>% summarise(mean_LVMIp=mean(LVMIp, na.rm=TRUE))
