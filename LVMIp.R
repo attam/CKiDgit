@@ -5,7 +5,7 @@
 # - LVMI (g/m2)
 # reference: Khoury PR, Mitsnefes M, Daniels SR, Kimball TR. Age-Specific Reference Intervals for Indexed Left Ventricular Mass in Children. Journal of the American Society of Echocardiography. 2009;22(6):709-714. doi:10.1016/j.echo.2009.03.003)
 
-LVMIp<-function(gender,age,lvmi){
+LVMI_p<-function(gender,age,lvmi){
   load("LVMI_table.RData")
   if(is.na(age)) return(NA)
   if(age>=18) age<-17.9

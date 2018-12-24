@@ -68,24 +68,9 @@ test$age<-(test$BSDATE-test$DOB)+test$DB_DATE
 # gender: since some values of MALE1FE0 are missing, will solve missing values by taking the mean of MALE1FE0 for each case (no change in gender over time)
 test<-test %>% group_by(CASEID) %>% mutate(MALE1FE0=mean(MALE1FE0, na.rm=TRUE))
 
-#add ckidfull [the best estimated gfr for research based on Schwartz and Schneider 2012]
-# function below calculates gfr based on full ckid equation if all data available, otherwise returns NA
-# if optional switch permissive is set, will provide alternative bedside schwartz gfr in case where full ckidgfr is not available
-gfr<-function(height,cr,cystatin,bun,gender, permissive=NULL) {
-  if (anyNA(c(height,cr,cystatin,bun,gender))) {
-    if (!is.null(permissive)){
-      if (anyNA(c(height,cr))) return(NA)
-      return (((height/100)*0.413)/cr)
-    } else return (NA)}
-  term1=((height/100)/cr)^0.456
-  term2=(1.8/cystatin)^0.418
-  term3=(30/bun)^0.079
-  term4=((height/100)/1.4)^0.179
-  gfr<-39.8*term1*term2*term3*term4*ifelse(gender==1,1.076,1)
-  return(gfr)
-}
+source("gfr.R")
 # gfr will be based on ckidfull equation if the data is available, otherwise bedside schartz equation is used
-test$gfr<-mapply(gfr,test$AVHEIGHT,test$SCR,test$CYC_DB,test$BUN,test$MALE1FE0, permissive=TRUE)
+test$gfr<-mapply(GFR,test$AVHEIGHT,test$SCR,test$CYC_DB,test$BUN,test$MALE1FE0, permissive=TRUE)
 
 # add column for urine protein:creatinine ratio based on RLURPROT and RLURCREA
 # add column for percentage of total urine protein that is albumin (Ualb_pct)
@@ -107,7 +92,7 @@ test$Upc.factor<-cut(test$Upc,breaks=c(-Inf,0.5,1,2,Inf),labels=c("normal","mild
 # display information about timing of echocardiogram data, grouped by visits
 # note: BP_medlist will display the misspelled/brand names of BP meds, frequency at visit 10?, and corrected names
 # categorize the BP meds into groups based on BP_medgroups.csv
-load("BP_medlist.RData")
+load("BP_medlist.RData",verbose = TRUE)
 BP_medgroups <- read.csv("BP_medgroups.csv")
 medsum_full$med.corrected<-BP_medlist$Corrected.Name[match(medsum_full$MSMEDICA,BP_medlist$Var1)]
 medsum_full$BPmedgroup<-BP_medgroups$bp_group[match(medsum_full$med.corrected,BP_medgroups$x)]
@@ -207,7 +192,7 @@ test<-full_join(cardio %>% select(CASEID,VISIT,ABPMSUCCESS,BPclass,noctHTN),test
 test$BPclass.factor<-cut(test$BPclass,0:4,right=FALSE, labels=c("NL","WCH","MH","AH"),ordered_result = TRUE)
 test$BPclass.2.factor<-factor(test$BPclass.factor<="WCH", labels=c("NL+WCH","MH+AH"))
 # Create variable LVMIp using LVMIp function to calculate LVMI percentiles
-test<-test %>% filter(!is.na(LVMI)) %>% rowwise() %>% mutate(LVMIp=LVMIp(MALE1FE0,age,LVMI))
+test<-test %>% filter(!is.na(LVMI)) %>% rowwise() %>% mutate(LVMIp=LVMI_p(MALE1FE0,age,LVMI))
 test$BMIz<-qnorm(test$BMIPCTAG/100)
 test$GNGDIAG.factor<-factor(test$GNGDIAG<=2,labels=c("glom","non-glom"))
 
@@ -219,10 +204,11 @@ load(file="test.RData")
 ### data analysis begin ###
 # define cohort
 combo_cases<-medsum_full.old %>% filter(VISIT==20,length(grep("\\/",med.corrected)!=0L)) %>% ungroup() %>% select(CASEID) %>% unique() %>% unlist() %>% as.numeric()
-cases<-test %>% filter(!CASEID %in% combo_cases,VISIT==20, n_agents>0,!is.na(sum_DDI),ABPMSUCCESS==1,!is.na(BUN), !is.na(CYC_DB),!is.na(SCR),!is.na(AVHEIGHT), !is.na(AVWEIGHT), !is.na(BPstatus2017)) %>% ungroup() %>%select(CASEID) %>% unique %>% unlist %>% as.numeric()# exclude those taking combo medications
+cases<-test %>% filter(!CASEID %in% combo_cases,VISIT==20, n_agents>0,!is.na(sum_DDI),ABPMSUCCESS==1,!BPclass.factor=="WCH",!is.na(BUN), !is.na(CYC_DB),!is.na(SCR),!is.na(AVHEIGHT), !is.na(AVWEIGHT), !is.na(BPstatus2017)) %>% ungroup() %>%select(CASEID) %>% unique %>% unlist %>% as.numeric()# exclude those taking combo medications
 test.cohort<-test %>% filter(VISIT==20, CASEID %in% cases)
 
 test.cohort<-test.cohort %>% mutate(sum_DDI.ln=log(sum_DDI))
+
 
 cum_DDI.normotensive<-test.cohort %>% filter(BPclass.factor<="WCH") %>% ungroup %>% select(sum_DDI.ln) %>% unlist %>% as.numeric()
 cum_DDI.hypertensive<-test.cohort %>% filter(BPclass.factor>"WCH") %>% ungroup %>% select(sum_DDI.ln) %>% unlist %>% as.numeric()
@@ -923,3 +909,17 @@ test$mean_DDI<-apply(test$DDI_all,1,FUN=function(x) mean(x,na.rm=TRUE))
 # compare LVMIp to LVHE: show table of all LVMIp percentiles and the average proportion of patients categorized as LVH (using LVHE)
 test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVMIp) %>% summarise(mean_LVHE=mean(LVHE, na.rm=TRUE), mean_LVHF=mean(LVHF,na.rm=TRUE))
 test %>% select(CASEID,VISIT,LVMI,LVHF,LVHE, LVMIp) %>% group_by(LVHE,LVHF) %>% summarise(mean_LVMIp=mean(LVMIp, na.rm=TRUE))
+
+library(ggplot2)
+library(ggcorrplot)
+library(dplyr)
+test.cohort.2<-test.cohort %>% select(BPclass,Ualb_pct,GNGDIAG,BMIz,gfr,age,n_agents,LVMIp,GHTOTINC,MALE1FE0,Upc,sum_DDI)
+corr<-round(cor(test.cohort.2),1)
+ggcorrplot(corr,hc.order=FALSE,
+           type="lower",
+           lab=TRUE,
+           lab_size=3,
+           method="circle",
+           colors=c("dark red","white","dark green"),
+           title="Correlogram of study population characteristics",
+           ggtheme=theme_bw)

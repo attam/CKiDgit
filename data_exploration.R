@@ -237,7 +237,7 @@ test$BPclass.factor<-cut(test$BPclass,0:6,right=FALSE, labels=c("NL","WCH","PH",
 test$BPclass2.factor<-cut(test$BPclass2,0:4,right=FALSE, labels=c("NL","WCH","MH","AH"),ordered_result = TRUE)
 # Create variable LVMIp using LVMIp function to calculate LVMI percentiles
 test$LVMIp<-NA
-test$LVMIp[which(!is.na(test$LVMI))]<-mapply(LVMIp, test$MALE1FE0[which(!is.na(test$LVMI))],test$age[which(!is.na(test$LVMI))],test$LVMI[which(!is.na(test$LVMI))])
+test$LVMIp[which(!is.na(test$LVMI))]<-mapply(LVMI_p, test$MALE1FE0[which(!is.na(test$LVMI))],test$age[which(!is.na(test$LVMI))],test$LVMI[which(!is.na(test$LVMI))])
 
 
 # parse drug info stored in test as separate variables for analysis
